@@ -1,0 +1,4 @@
+[package]
+name = "unicode_width"
+version = "0.0.1"
+authors = ["kwantam <kwantam@gmail.com>"]
