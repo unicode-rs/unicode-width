@@ -1,10 +1,10 @@
-# unicode_width
+# unicode-width
 
 Determine displayed width of `char` and `str` types according to
 [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
 rules.
 
-[![Build Status](https://travis-ci.org/unicode-rs/unicode_width.svg?branch=master)](https://travis-ci.org/unicode-rs/unicode_width)
+[![Build Status](https://travis-ci.org/unicode-rs/unicode-width.svg?branch=master)](https://travis-ci.org/unicode-rs/unicode-width)
 
 ```rust
 extern crate unicode_width;
@@ -21,4 +21,4 @@ fn main() {
 }
 ```
 
-[Documentation](http://unicode-rs.github.io/unicode_width/unicode_width/)
+[Documentation](http://unicode-rs.github.io/unicode-width/unicode-width/)

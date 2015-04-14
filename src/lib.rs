@@ -34,7 +34,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unicode_width = "0.0.1"
+//! unicode-width = "0.0.1"
 //! ```
 
 #![deny(missing_docs, unsafe_code)]
@@ -143,5 +143,35 @@ mod tests {
         assert_eq!('\x01'.width_cjk(), None);
         assert_eq!(UnicodeWidthChar::width('\u{2081}'), Some(1));
         assert_eq!('\u{2081}'.width_cjk(), Some(2));
+    }
+
+    #[test]
+    fn test_char2() {
+        use super::UnicodeWidthChar;
+        use core::option::Option::{Some, None};
+
+        assert_eq!(UnicodeWidthChar::width('\x00'),Some(0));
+        assert_eq!('\x00'.width_cjk(),Some(0));
+
+        assert_eq!(UnicodeWidthChar::width('\x0A'),None);
+        assert_eq!('\x0A'.width_cjk(),None);
+
+        assert_eq!(UnicodeWidthChar::width('w'),Some(1));
+        assert_eq!('w'.width_cjk(),Some(1));
+
+        assert_eq!(UnicodeWidthChar::width('ｈ'),Some(2));
+        assert_eq!('ｈ'.width_cjk(),Some(2));
+
+        assert_eq!(UnicodeWidthChar::width('\u{AD}'),Some(1));
+        assert_eq!('\u{AD}'.width_cjk(),Some(1));
+
+        assert_eq!(UnicodeWidthChar::width('\u{1160}'),Some(0));
+        assert_eq!('\u{1160}'.width_cjk(),Some(0));
+
+        assert_eq!(UnicodeWidthChar::width('\u{a1}'),Some(1));
+        assert_eq!('\u{a1}'.width_cjk(),Some(2));
+
+        assert_eq!(UnicodeWidthChar::width('\u{300}'),Some(0));
+        assert_eq!('\u{300}'.width_cjk(),Some(0));
     }
 }
