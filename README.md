@@ -21,4 +21,4 @@ fn main() {
 }
 ```
 
-[Documentation](http://unicode-rs.github.io/unicode-width/unicode-width/)
+[Documentation](http://unicode-rs.github.io/unicode-width/unicode_width/)
