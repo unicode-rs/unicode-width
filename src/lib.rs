@@ -55,13 +55,7 @@ pub use tables::UNICODE_VERSION;
 mod tables;
 
 /// Methods for determining displayed width of Unicode characters.
-#[allow(missing_docs)]
 pub trait UnicodeWidthChar {
-    fn width(self) -> Option<usize>;
-    fn width_cjk(self) -> Option<usize>;
-}
-
-impl UnicodeWidthChar for char {
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character other than `'\x00'`.
     ///
@@ -69,7 +63,7 @@ impl UnicodeWidthChar for char {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 1 column wide. This is consistent with the recommendations for non-CJK
     /// contexts, or when the context cannot be reliably determined.
-    fn width(self) -> Option<usize> { cw::width(self, false) }
+    fn width(self) -> Option<usize>;
 
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character other than `'\x00'`.
@@ -78,17 +72,17 @@ impl UnicodeWidthChar for char {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 columns wide. This is consistent with the recommendations for
     /// CJK contexts.
+    fn width_cjk(self) -> Option<usize>;
+}
+
+impl UnicodeWidthChar for char {
+    fn width(self) -> Option<usize> { cw::width(self, false) }
+
     fn width_cjk(self) -> Option<usize> { cw::width(self, true) }
 }
 
 /// Methods for determining displayed width of Unicode strings.
-#[allow(missing_docs)]
 pub trait UnicodeWidthStr {
-    fn width<'a>(&'a self) -> usize;
-    fn width_cjk<'a>(&'a self) -> usize;
-}
-
-impl UnicodeWidthStr for str {
     /// Returns the string's displayed width in columns.
     ///
     /// Control characters are treated as having zero width.
@@ -97,9 +91,7 @@ impl UnicodeWidthStr for str {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 1 column wide. This is consistent with the recommendations for
     /// non-CJK contexts, or when the context cannot be reliably determined.
-    fn width(&self) -> usize {
-        self.chars().map(|c| cw::width(c, false).unwrap_or(0)).sum()
-    }
+    fn width<'a>(&'a self) -> usize;
 
     /// Returns the string's displayed width in columns.
     ///
@@ -109,6 +101,14 @@ impl UnicodeWidthStr for str {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 column wide. This is consistent with the recommendations for
     /// CJK contexts.
+    fn width_cjk<'a>(&'a self) -> usize;
+}
+
+impl UnicodeWidthStr for str {
+    fn width(&self) -> usize {
+        self.chars().map(|c| cw::width(c, false).unwrap_or(0)).sum()
+    }
+
     fn width_cjk(&self) -> usize {
         self.chars().map(|c| cw::width(c, true).unwrap_or(0)).sum()
     }
