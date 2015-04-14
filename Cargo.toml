@@ -1,4 +1,18 @@
 [package]
+
 name = "unicode_width"
 version = "0.0.1"
 authors = ["kwantam <kwantam@gmail.com>"]
+
+homepage = "https://github.com/unicode-rs/unicode_width"
+repository = "https://github.com/unicode-rs/unicode_width"
+documentation = "https://unicode-rs.github.io/unicode_width/unicode_width"
+license = "MIT/Apache-2.0"
+keywords = ["text", "width", "unicode"]
+readme = "README.md"
+description = """
+Determine displayed width of `char` and `str` types
+according to Unicode Standard Annex #11 rules.
+"""
+
+exclude = [ "target/*", "Cargo.lock" ]
