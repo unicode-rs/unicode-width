@@ -13,7 +13,7 @@
 #![allow(missing_docs, non_upper_case_globals, non_snake_case)]
 
 /// The version of [Unicode](http://www.unicode.org/)
-/// that this version of unicode_charwidth is based on.
+/// that this version of unicode-width is based on.
 pub const UNICODE_VERSION: (u64, u64, u64) = (7, 0, 0);
 
 pub mod charwidth {
