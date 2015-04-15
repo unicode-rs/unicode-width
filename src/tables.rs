@@ -17,13 +17,18 @@
 pub const UNICODE_VERSION: (u64, u64, u64) = (7, 0, 0);
 
 pub mod charwidth {
-    use core::option::Option;
-    use core::option::Option::{Some, None};
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{self, Some, None};
+    #[cfg(feature = "no_std")]
     use core::slice::SliceExt;
+    #[cfg(feature = "no_std")]
     use core::result::Result::{Ok, Err};
 
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
+        #[cfg(feature = "no_std")]
         use core::cmp::Ordering::{Equal, Less, Greater};
+        #[cfg(not(feature = "no_std"))]
+        use std::cmp::Ordering::{Equal, Less, Greater};
         match r.binary_search_by(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }

@@ -27,6 +27,11 @@
 //! }
 //! ```
 //!
+//! # features
+//!
+//! unicode-width supports a `no_std` feature. This eliminates dependence
+//! on std, and instead uses equivalent functions from core.
+//!
 //! # crates.io
 //!
 //! You can use this package in your project by adding the following
@@ -34,23 +39,32 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unicode-width = "0.0.1"
+//! unicode-width = "0.1.0"
 //! ```
 
 #![deny(missing_docs, unsafe_code)]
-#![feature(no_std, core)]
-#![no_std]
 
+#![cfg_attr(feature = "no_std", no_std)]
+#![cfg_attr(feature = "no_std", feature(no_std, core))]
+
+#[cfg(feature = "no_std")]
+#[macro_use]
 extern crate core;
 
-#[cfg(test)]
+#[cfg(all(test, feature = "no_std"))]
 #[macro_use]
 extern crate std;
 
+#[cfg(feature = "no_std")]
 use core::prelude::*;
 
 use tables::charwidth as cw;
 pub use tables::UNICODE_VERSION;
+
+#[cfg(feature = "no_std")]
+use core::ops::Add;
+#[cfg(not(feature = "no_std"))]
+use std::ops::Add;
 
 mod tables;
 
@@ -106,11 +120,11 @@ pub trait UnicodeWidthStr {
 
 impl UnicodeWidthStr for str {
     fn width(&self) -> usize {
-        self.chars().map(|c| cw::width(c, false).unwrap_or(0)).sum()
+        self.chars().map(|c| cw::width(c, false).unwrap_or(0)).fold(0, Add::add)
     }
 
     fn width_cjk(&self) -> usize {
-        self.chars().map(|c| cw::width(c, true).unwrap_or(0)).sum()
+        self.chars().map(|c| cw::width(c, true).unwrap_or(0)).fold(0, Add::add)
     }
 }
 
@@ -133,6 +147,7 @@ mod tests {
     #[test]
     fn test_char() {
         use super::UnicodeWidthChar;
+        #[cfg(feature = "no_std")]
         use core::option::Option::{Some, None};
 
         assert_eq!(UnicodeWidthChar::width('ｈ'), Some(2));
@@ -148,6 +163,7 @@ mod tests {
     #[test]
     fn test_char2() {
         use super::UnicodeWidthChar;
+        #[cfg(feature = "no_std")]
         use core::option::Option::{Some, None};
 
         assert_eq!(UnicodeWidthChar::width('\x00'),Some(0));

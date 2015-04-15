@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright 2011-2013 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2011-2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -197,14 +197,20 @@ def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
     f.write("\n    ];\n\n")
 
 def emit_charwidth_module(f, width_table):
-    f.write("pub mod charwidth {\n")
-    f.write("    use core::option::Option;\n")
-    f.write("    use core::option::Option::{Some, None};\n")
-    f.write("    use core::slice::SliceExt;\n")
-    f.write("    use core::result::Result::{Ok, Err};\n")
+    f.write("pub mod charwidth {")
     f.write("""
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{self, Some, None};
+    #[cfg(feature = "no_std")]
+    use core::slice::SliceExt;
+    #[cfg(feature = "no_std")]
+    use core::result::Result::{Ok, Err};
+
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
+        #[cfg(feature = "no_std")]
         use core::cmp::Ordering::{Equal, Less, Greater};
+        #[cfg(not(feature = "no_std"))]
+        use std::cmp::Ordering::{Equal, Less, Greater};
         match r.binary_search_by(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }
