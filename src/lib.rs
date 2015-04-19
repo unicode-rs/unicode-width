@@ -39,7 +39,7 @@
 //!
 //! ```toml
 //! [dependencies]
-//! unicode-width = "0.1.0"
+//! unicode-width = "0.1.1"
 //! ```
 
 #![deny(missing_docs, unsafe_code)]
@@ -49,6 +49,8 @@
 #![cfg_attr(feature = "no_std", no_std)]
 #![cfg_attr(feature = "no_std", feature(no_std, core))]
 
+#![cfg_attr(test, feature(test, unicode))]
+
 #[cfg(feature = "no_std")]
 #[macro_use]
 extern crate core;
@@ -56,6 +58,9 @@ extern crate core;
 #[cfg(all(test, feature = "no_std"))]
 #[macro_use]
 extern crate std;
+
+#[cfg(test)]
+extern crate test;
 
 #[cfg(feature = "no_std")]
 use core::prelude::*;
@@ -69,6 +74,9 @@ use core::ops::Add;
 use std::ops::Add;
 
 mod tables;
+
+#[cfg(test)]
+mod tests;
 
 /// Methods for determining displayed width of Unicode characters.
 pub trait UnicodeWidthChar {
@@ -92,8 +100,10 @@ pub trait UnicodeWidthChar {
 }
 
 impl UnicodeWidthChar for char {
+    #[inline]
     fn width(self) -> Option<usize> { cw::width(self, false) }
 
+    #[inline]
     fn width_cjk(self) -> Option<usize> { cw::width(self, true) }
 }
 
@@ -121,75 +131,13 @@ pub trait UnicodeWidthStr {
 }
 
 impl UnicodeWidthStr for str {
+    #[inline]
     fn width(&self) -> usize {
         self.chars().map(|c| cw::width(c, false).unwrap_or(0)).fold(0, Add::add)
     }
 
+    #[inline]
     fn width_cjk(&self) -> usize {
         self.chars().map(|c| cw::width(c, true).unwrap_or(0)).fold(0, Add::add)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_str() {
-        use super::UnicodeWidthStr;
-
-        assert_eq!(UnicodeWidthStr::width("ｈｅｌｌｏ"), 10);
-        assert_eq!("ｈｅｌｌｏ".width_cjk(), 10);
-        assert_eq!(UnicodeWidthStr::width("\0\0\0\x01\x01"), 0);
-        assert_eq!("\0\0\0\x01\x01".width_cjk(), 0);
-        assert_eq!(UnicodeWidthStr::width(""), 0);
-        assert_eq!("".width_cjk(), 0);
-        assert_eq!(UnicodeWidthStr::width("\u{2081}\u{2082}\u{2083}\u{2084}"), 4);
-        assert_eq!("\u{2081}\u{2082}\u{2083}\u{2084}".width_cjk(), 8);
-    }
-
-    #[test]
-    fn test_char() {
-        use super::UnicodeWidthChar;
-        #[cfg(feature = "no_std")]
-        use core::option::Option::{Some, None};
-
-        assert_eq!(UnicodeWidthChar::width('ｈ'), Some(2));
-        assert_eq!('ｈ'.width_cjk(), Some(2));
-        assert_eq!(UnicodeWidthChar::width('\x00'), Some(0));
-        assert_eq!('\x00'.width_cjk(), Some(0));
-        assert_eq!(UnicodeWidthChar::width('\x01'), None);
-        assert_eq!('\x01'.width_cjk(), None);
-        assert_eq!(UnicodeWidthChar::width('\u{2081}'), Some(1));
-        assert_eq!('\u{2081}'.width_cjk(), Some(2));
-    }
-
-    #[test]
-    fn test_char2() {
-        use super::UnicodeWidthChar;
-        #[cfg(feature = "no_std")]
-        use core::option::Option::{Some, None};
-
-        assert_eq!(UnicodeWidthChar::width('\x00'),Some(0));
-        assert_eq!('\x00'.width_cjk(),Some(0));
-
-        assert_eq!(UnicodeWidthChar::width('\x0A'),None);
-        assert_eq!('\x0A'.width_cjk(),None);
-
-        assert_eq!(UnicodeWidthChar::width('w'),Some(1));
-        assert_eq!('w'.width_cjk(),Some(1));
-
-        assert_eq!(UnicodeWidthChar::width('ｈ'),Some(2));
-        assert_eq!('ｈ'.width_cjk(),Some(2));
-
-        assert_eq!(UnicodeWidthChar::width('\u{AD}'),Some(1));
-        assert_eq!('\u{AD}'.width_cjk(),Some(1));
-
-        assert_eq!(UnicodeWidthChar::width('\u{1160}'),Some(0));
-        assert_eq!('\u{1160}'.width_cjk(),Some(0));
-
-        assert_eq!(UnicodeWidthChar::width('\u{a1}'),Some(1));
-        assert_eq!('\u{a1}'.width_cjk(),Some(2));
-
-        assert_eq!(UnicodeWidthChar::width('\u{300}'),Some(0));
-        assert_eq!('\u{300}'.width_cjk(),Some(0));
     }
 }

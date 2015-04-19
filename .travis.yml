@@ -6,6 +6,7 @@ script:
   - cargo clean
   - cargo build --verbose --features default
   - cargo test --verbose --features default
+  - cargo bench --verbose --features default
   - rustdoc --test README.md -L target/debug -L target/debug/deps
   - cargo doc
 after_success: |

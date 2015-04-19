@@ -206,6 +206,7 @@ def emit_charwidth_module(f, width_table):
     #[cfg(feature = "no_std")]
     use core::result::Result::{Ok, Err};
 
+    #[inline]
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
         #[cfg(feature = "no_std")]
         use core::cmp::Ordering::{Equal, Less, Greater};
@@ -226,6 +227,7 @@ def emit_charwidth_module(f, width_table):
 """)
 
     f.write("""
+    #[inline]
     pub fn width(c: char, is_cjk: bool) -> Option<usize> {
         match c as usize {
             _c @ 0 => Some(0),          // null is zero width
