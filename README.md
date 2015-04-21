@@ -6,6 +6,8 @@ rules.
 
 [![Build Status](https://travis-ci.org/unicode-rs/unicode-width.svg)](https://travis-ci.org/unicode-rs/unicode-width)
 
+[Documentation](https://unicode-rs.github.io/unicode-width/unicode_width/index.html)
+
 ```rust
 extern crate unicode_width;
 
