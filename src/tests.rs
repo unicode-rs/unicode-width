@@ -28,6 +28,7 @@ fn cargo(b: &mut Bencher) {
 }
 
 #[bench]
+#[allow(deprecated)]
 fn stdlib(b: &mut Bencher) {
     let string = iter::repeat('a').take(4096).collect::<String>();
 
