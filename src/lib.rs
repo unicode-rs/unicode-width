@@ -47,13 +47,9 @@
        html_favicon_url = "https://unicode-rs.github.io/unicode-rs_sm.png")]
 
 #![cfg_attr(feature = "no_std", no_std)]
-#![cfg_attr(feature = "no_std", feature(no_std, core, core_prelude, core_slice_ext, core_str_ext))]
+#![cfg_attr(feature = "no_std", feature(no_std, core_slice_ext, core_str_ext))]
 
-#![cfg_attr(test, feature(test, unicode))]
-
-#[cfg(feature = "no_std")]
-#[macro_use]
-extern crate core;
+#![cfg_attr(test, feature(test))]
 
 #[cfg(all(test, feature = "no_std"))]
 #[macro_use]
@@ -61,9 +57,6 @@ extern crate std;
 
 #[cfg(test)]
 extern crate test;
-
-#[cfg(feature = "no_std")]
-use core::prelude::*;
 
 use tables::charwidth as cw;
 pub use tables::UNICODE_VERSION;

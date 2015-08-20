@@ -34,7 +34,7 @@ fn stdlib(b: &mut Bencher) {
 
     b.iter(|| {
         for c in string.chars() {
-            test::black_box(c.width(false));
+            test::black_box(c.width());
         }
     });
 }
