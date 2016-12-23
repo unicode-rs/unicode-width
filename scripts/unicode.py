@@ -199,19 +199,12 @@ def emit_table(f, name, t_data, t_type = "&'static [(char, char)]", is_pub=True,
 def emit_charwidth_module(f, width_table):
     f.write("pub mod charwidth {")
     f.write("""
-    #[cfg(feature = "no_std")]
     use core::option::Option::{self, Some, None};
-    #[cfg(feature = "no_std")]
-    use core::slice::SliceExt;
-    #[cfg(feature = "no_std")]
     use core::result::Result::{Ok, Err};
 
     #[inline]
     fn bsearch_range_value_table(c: char, is_cjk: bool, r: &'static [(char, char, u8, u8)]) -> u8 {
-        #[cfg(feature = "no_std")]
         use core::cmp::Ordering::{Equal, Less, Greater};
-        #[cfg(not(feature = "no_std"))]
-        use std::cmp::Ordering::{Equal, Less, Greater};
         match r.binary_search_by(|&(lo, hi, _, _)| {
             if lo <= c && c <= hi { Equal }
             else if hi < c { Less }

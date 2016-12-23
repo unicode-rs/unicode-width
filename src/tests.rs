@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[cfg(feature = "bench")]
 use std::iter;
+#[cfg(feature = "bench")]
 use test::{self, Bencher};
-
+#[cfg(feature = "bench")]
 use super::UnicodeWidthChar;
 
-#[cfg(feature = "no_std")]
 use std::prelude::v1::*;
 
+#[cfg(feature = "bench")]
 #[bench]
 fn cargo(b: &mut Bencher) {
     let string = iter::repeat('a').take(4096).collect::<String>();
@@ -27,6 +29,7 @@ fn cargo(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "bench")]
 #[bench]
 #[allow(deprecated)]
 fn stdlib(b: &mut Bencher) {
@@ -39,6 +42,7 @@ fn stdlib(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "bench")]
 #[bench]
 fn simple_if(b: &mut Bencher) {
     let string = iter::repeat('a').take(4096).collect::<String>();
@@ -50,6 +54,7 @@ fn simple_if(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "bench")]
 #[bench]
 fn simple_match(b: &mut Bencher) {
     let string = iter::repeat('a').take(4096).collect::<String>();
@@ -61,6 +66,7 @@ fn simple_match(b: &mut Bencher) {
     });
 }
 
+#[cfg(feature = "bench")]
 #[inline]
 fn simple_width_if(c: char) -> Option<usize> {
     let cu = c as u32;
@@ -77,6 +83,7 @@ fn simple_width_if(c: char) -> Option<usize> {
     }
 }
 
+#[cfg(feature = "bench")]
 #[inline]
 fn simple_width_match(c: char) -> Option<usize> {
     match c as u32 {

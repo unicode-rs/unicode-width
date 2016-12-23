@@ -25,8 +25,8 @@ fn main() {
 
 ## features
 
-unicode-width supports a `no_std` feature. This eliminates dependence
-on std, and instead uses equivalent functions from core.
+unicode-width does not depend on libstd, so it can be used in crates
+with the `#![no_std]` attribute.
 
 ## crates.io
 
@@ -35,5 +35,5 @@ to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-unicode-width = "0.1.3"
+unicode-width = "0.1.4"
 ```
