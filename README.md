@@ -35,5 +35,5 @@ to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-unicode-width = "0.1.4"
+unicode-width = "0.1.5"
 ```
