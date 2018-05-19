@@ -22,7 +22,7 @@ after_success: |
   git push -qf https://${TOKEN}@github.com/${TRAVIS_REPO_SLUG}.git gh-pages
 env:
   global:
-    secure: sF21oZa17vX3iE16x7lt2VsdcSYUJ5PtEwJzQ9Ab/0zFaNc5LUXFUOBddMS9LxYnwO1WI9iOVOYC2NbXT4oRgjZ2cmkatoE6nGHmkqUe4paxVy1Fg6ncjYO1jZwoRSSn1mi0CcwoHq46r2l6FaD0InJExwa3dzk63B9SjIUiekw=
+    secure: vHL3zrN8AF+H79jrB8OfzuPqsUHevo6ECzwqXPj2dMSqcSXEeCY/ENAfiyFg+oW8yEVP8X2BS1a/C9yvVQRLqLbm1HbZ/5vUpoggT9S0IhKqZMyAcLYXfIEUDMDQuaSdFndDaHvq8275ScgX1LRv1kcPjQoZHuaXWMH8y/Suvyo=
 notifications:
   email:
     on_success: never
