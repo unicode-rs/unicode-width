@@ -23,6 +23,16 @@ fn main() {
 }
 ```
 
+**NOTE:** The computed width values may not match the actual rendered column
+width. For example, the woman scientist emoji comprises of a woman emoji, a
+zero-width joiner and a microscope emoji.
+
+```rust
+    assert_eq!(UnicodeWidthStr::width("👩"), 2); // Woman
+    assert_eq!(UnicodeWidthStr::width("🔬"), 2); // Microscope
+    assert_eq!(UnicodeWidthStr::width("👩‍🔬"), 4); // Woman scientist
+```
+
 ## features
 
 unicode-width does not depend on libstd, so it can be used in crates

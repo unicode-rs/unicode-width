@@ -109,6 +109,16 @@ fn test_str() {
 }
 
 #[test]
+fn test_emoji() {
+    // Example from the README.
+    use super::UnicodeWidthStr;
+
+    assert_eq!(UnicodeWidthStr::width("👩"), 2); // Woman
+    assert_eq!(UnicodeWidthStr::width("🔬"), 2); // Microscope
+    assert_eq!(UnicodeWidthStr::width("👩‍🔬"), 4); // Woman scientist
+}
+
+#[test]
 fn test_char() {
     use super::UnicodeWidthChar;
     #[cfg(feature = "no_std")]
