@@ -56,6 +56,13 @@ extern crate std;
 #[cfg(feature = "bench")]
 extern crate test;
 
+#[cfg(test)]
+#[macro_use]
+extern crate doc_comment;
+
+#[cfg(test)]
+doctest!("../README.md");
+
 use tables::charwidth as cw;
 pub use tables::UNICODE_VERSION;
 

@@ -21,3 +21,6 @@ exclude = [ "target/*", "Cargo.lock" ]
 default = []
 no_std = []
 bench = []
+
+[dev-dependencies]
+doc-comment = "0.3"
