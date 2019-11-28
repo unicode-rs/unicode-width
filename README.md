@@ -3,7 +3,7 @@
 Determine displayed width of `char` and `str` types according to
 [Unicode Standard Annex #11][UAX11] rules.
 
-[UAX11]: (http://www.unicode.org/reports/tr11/)
+[UAX11]: http://www.unicode.org/reports/tr11/
 
 [![Build Status](https://travis-ci.org/unicode-rs/unicode-width.svg)](https://travis-ci.org/unicode-rs/unicode-width)
 
@@ -39,7 +39,7 @@ fn main() {
 }
 ```
 
-See [Unicode Standard Annex #11](UAX11) for precise details on what is and isn't
+See [Unicode Standard Annex #11][UAX11] for precise details on what is and isn't
 covered by this crate.
 
 ## features
