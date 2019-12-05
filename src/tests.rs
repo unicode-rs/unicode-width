@@ -164,3 +164,12 @@ fn test_char2() {
     assert_eq!(UnicodeWidthChar::width('\u{300}'),Some(0));
     assert_eq!('\u{300}'.width_cjk(),Some(0));
 }
+
+#[test]
+fn unicode_12() {
+    use super::UnicodeWidthChar;
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{Some, None};
+
+    assert_eq!(UnicodeWidthChar::width('\u{1F971}'), Some(2));
+}
