@@ -65,23 +65,17 @@ pub mod charwidth {
     /// they're treated as single width.
     #[inline]
     pub fn width(c: char, is_cjk: bool) -> Option<usize> {
-        if c < '\u{7F}' {
-            if c >= '\u{20}' {
-                // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
-                Some(1)
-            } else if c == '\0' {
-                // U+0000 *is* a control code, but it's special-cased
-                Some(0)
-            } else {
-                // U+0001 to U+0020 (exclusive) are control codes
-                None
-            }
-        } else if c >= '\u{A0}' {
-            // No characters >= U+00A0 are control codes, so we can consult the lookup tables
-            Some(lookup_width(c, is_cjk))
-        } else {
+        match c {
+            // U+0000 *is* a control code, but it's special-cased
+            '\u{0}' => Some(0),
+            // U+0001 to U+0020 (exclusive) are control codes
+            '\u{1}'..='\u{1F}' => None,
+            // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
+            '\u{20}'..='\u{7E}' => Some(1),
             // U+007F to U+00A0 (exclusive) are control codes
-            None
+            '\u{7F}'..='\u{9F}' => None,
+            // No characters >= U+00A0 are control codes, so we can consult the lookup tables
+            '\u{A0}'.. => Some(lookup_width(c, is_cjk)),
         }
     }
 
