@@ -66,12 +66,13 @@ def fetch_open(filename: str):
     """Opens `filename` and return its corresponding file object. If `filename` isn't on disk,
     fetches it from `http://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
     """
+    basename = os.path.basename(filename)
     if not os.path.exists(os.path.basename(filename)):
         os.system(f"curl -O http://www.unicode.org/Public/UNIDATA/{filename}")
     try:
-        return open(filename, encoding="utf-8")
+        return open(basename, encoding="utf-8")
     except OSError:
-        sys.stderr.write(f"cannot load {filename}")
+        sys.stderr.write(f"cannot load {basename}")
         sys.exit(1)
 
 
@@ -152,7 +153,8 @@ def load_zero_widths() -> "list[bool]":
 
     - it is in general category `Cc`,
     - or if it has the `Grapheme_Extend` property (determined from `DerivedCoreProperties.txt`),
-    - or if it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`),
+    - or if it is one of U+0CC0, U+0CC7, U+0CC8, U+0CCA, U+0CCB, U+1B3B, U+1B3D, or U+1B43,
+    - or if it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`) and is not U+115F,
     - or if it has a `Hangul_Syllable_Type` of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`).
     """
 
@@ -408,8 +410,29 @@ def make_tables(
     return tables
 
 
+def variation_sequences() -> "list[tuple[int, int]]":
+    """Outputs a list of character ranages, corresponding to all the valid characters for starting
+    an emoji presentation sequence."""
+
+    with fetch_open("emoji/emoji-variation-sequences.txt") as sequences:
+        sequence = re.compile(r"^([0-9A-F]+)\s+FE0F\s*;\s+emoji style")
+        ranges = []
+        for line in sequences.readlines():
+            if match := sequence.match(line):
+                cp = int(match.group(1), 16)
+                if ranges != [] and ranges[-1][1] == cp - 1:
+                    ranges[-1] = (ranges[-1][0], cp)
+                else:
+                    ranges.append((cp, cp))
+
+    return ranges
+
+
 def emit_module(
-    out_name: str, unicode_version: "tuple[int, int, int]", tables: "list[Table]"
+    out_name: str,
+    unicode_version: "tuple[int, int, int]",
+    tables: "list[Table]",
+    emoji_variations: "list[tuple[int, int]]",
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
     If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
@@ -488,6 +511,31 @@ pub mod charwidth {
 
         module.write(
             """
+    /// Whether this character forms an [emoji presentation sequence]
+    /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// when followed by `'\\u{FEOF}'`.
+    /// Emoji presentation sequences are considered to have width 2.
+    #[inline]
+    pub fn starts_emoji_presentation_seq(c: char) -> bool {
+        use core::cmp::Ordering::{Equal, Greater, Less};
+
+        EMOJI_PRESENTATION_RANGES
+            .binary_search_by(|&(lo, hi)| {
+                if lo > c {
+                    Greater
+                } else if hi < c {
+                    Less
+                } else {
+                    Equal
+                }
+            })
+            .is_ok()
+    }
+"""
+        )
+
+        module.write(
+            """
     /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or
     /// `None` if `c` is a control character other than `'\\x00'`.
     /// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
@@ -534,6 +582,20 @@ pub mod charwidth {
                 module.write(f" 0x{byte:02X},")
             module.write("\n    ];\n")
             subtable_count = new_subtable_count
+
+        # emoji table
+
+        module.write(
+            f"""
+    /// Each tuple corresponds to a range (inclusive at both ends)
+    /// of characters that can start an emoji presentation sequence.
+    static EMOJI_PRESENTATION_RANGES: [(char, char); {len(emoji_variations)}] = [
+"""
+        )
+        for lo, hi in emoji_variations:
+            module.write(f"        ('\\u{{{lo:X}}}', '\\u{{{hi:X}}}'),\n")
+        module.write("    ];\n")
+
         module.write("}\n")
 
 
@@ -569,6 +631,7 @@ def main(module_filename: str):
     width_map[0x00AD] = EffectiveWidth.NARROW
 
     tables = make_tables(TABLE_CFGS, enumerate(width_map))
+    emoji_variations = variation_sequences()
 
     print("------------------------")
     total_size = 0
@@ -579,7 +642,7 @@ def main(module_filename: str):
     print("------------------------")
     print(f"  Total Size: {total_size} bytes")
 
-    emit_module(module_filename, version, tables)
+    emit_module(module_filename, version, tables, emoji_variations)
     print(f'Wrote to "{module_filename}"')
 
 

@@ -108,6 +108,11 @@ pub trait UnicodeWidthStr {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 1 column wide. This is consistent with the recommendations for
     /// non-CJK contexts, or when the context cannot be reliably determined.
+    ///
+    /// Also consistent with UAX11, this function treats [emoji presentation sequences]
+    /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// as 2 columns wide. This means that the width of a string may not equal
+    /// the sum of the widths of its individual characters.
     fn width(&self) -> usize;
 
     /// Returns the string's displayed width in columns.
@@ -118,17 +123,39 @@ pub trait UnicodeWidthStr {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 column wide. This is consistent with the recommendations for
     /// CJK contexts.
+    ///
+    /// Also consistent with UAX11, this function treats [emoji presentation sequences]
+    /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// as 2 columns wide. This means that the width of a string may not equal
+    /// the sum of the widths of its individual characters.
     fn width_cjk(&self) -> usize;
 }
 
 impl UnicodeWidthStr for str {
     #[inline]
     fn width(&self) -> usize {
-        self.chars().map(|c| cw::width(c, false).unwrap_or(0)).sum()
+        str_width(self, false)
     }
 
     #[inline]
     fn width_cjk(&self) -> usize {
-        self.chars().map(|c| cw::width(c, true).unwrap_or(0)).sum()
+        str_width(self, true)
     }
+}
+
+fn str_width(s: &str, is_cjk: bool) -> usize {
+    s.chars()
+        .rfold((0, false), |(sum, was_fe0f), c| {
+            if c == '\u{FE0F}' {
+                (sum, true)
+            } else {
+                let add = if was_fe0f && cw::starts_emoji_presentation_seq(c) {
+                    2
+                } else {
+                    cw::width(c, is_cjk).unwrap_or(0)
+                };
+                (sum + add, false)
+            }
+        })
+        .0
 }
