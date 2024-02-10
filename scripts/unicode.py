@@ -147,9 +147,14 @@ def load_east_asian_widths() -> "list[EffectiveWidth]":
 def load_zero_widths() -> "list[bool]":
     """Returns a list `l` where `l[c]` is true if codepoint `c` is considered a zero-width
     character. `c` is considered a zero-width character if `c` is in general categories
-    `Cc`, `Cf`, `Mn`, or `Me` (determined by fetching and processing `UnicodeData.txt`)."""
+    `Cc`, `Cf`, `Mn`, or `Me` (determined by fetching and processing `UnicodeData.txt`),
+    or if it has the `Default_Ignorable_Code_Point` property (determined by fetching
+    and processing `DerivedCoreProperties.txt`)."""
+
+    zw_cat_codes = ["Cc", "Cf", "Mn", "Me"]
+    zw_map = []
+
     with fetch_open("UnicodeData.txt") as categories:
-        zw_map = []
         current = 0
         for line in categories.readlines():
             if len(raw_data := line.split(";")) != 15:
@@ -159,7 +164,7 @@ def load_zero_widths() -> "list[bool]":
                 raw_data[1],
                 raw_data[2],
             ]
-            zero_width = cat_code in ["Cc", "Cf", "Mn", "Me"]
+            zero_width = cat_code in zw_cat_codes
 
             assert current <= codepoint
             while current <= codepoint:
@@ -176,7 +181,26 @@ def load_zero_widths() -> "list[bool]":
             # Catch any leftover codepoints. They must be unassigned (so nonzero width)
             zw_map.append(False)
 
-        return zw_map
+    with fetch_open("DerivedCoreProperties.txt") as properties:
+        single = re.compile(r"^([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point +# (\w+)")
+        multiple = re.compile(r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point +# (\w+)")
+
+        for line in properties.readlines():
+            raw_data = None  # (low, high, category)
+            if match := single.match(line):
+                raw_data = (match.group(1), match.group(1), match.group(2))
+            elif match := multiple.match(line):
+                raw_data = (match.group(1), match.group(2), match.group(3))
+            else:
+                continue
+            low = int(raw_data[0], 16)
+            high = int(raw_data[1], 16)
+            cat = raw_data[2]
+            if cat not in zw_cat_codes:
+                for cp in range(low, high + 1):
+                    zw_map[cp] = True
+
+    return zw_map
 
 
 class Bucket:
