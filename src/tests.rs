@@ -206,3 +206,17 @@ fn test_default_ignorable() {
     assert_eq!(UnicodeWidthChar::width('\u{3164}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{FFA0}'), Some(0));
 }
+
+#[test]
+fn test_jamo() {
+    use super::UnicodeWidthChar;
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{None, Some};
+
+    assert_eq!(UnicodeWidthChar::width('\u{1100}'), Some(2));
+    assert_eq!(UnicodeWidthChar::width('\u{A97C}'), Some(2));
+    assert_eq!(UnicodeWidthChar::width('\u{1160}'), Some(0));
+    assert_eq!(UnicodeWidthChar::width('\u{D7C6}'), Some(0));
+    assert_eq!(UnicodeWidthChar::width('\u{11A8}'), Some(0));
+    assert_eq!(UnicodeWidthChar::width('\u{D7FB}'), Some(0));
+}

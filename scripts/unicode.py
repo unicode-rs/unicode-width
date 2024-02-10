@@ -64,7 +64,8 @@ BitPos = int
 
 def fetch_open(filename: str):
     """Opens `filename` and return its corresponding file object. If `filename` isn't on disk,
-    fetches it from `http://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure."""
+    fetches it from `http://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
+    """
     if not os.path.exists(os.path.basename(filename)):
         os.system(f"curl -O http://www.unicode.org/Public/UNIDATA/{filename}")
     try:
@@ -83,7 +84,8 @@ def load_unicode_version() -> "tuple[int, int, int]":
 
 class EffectiveWidth(enum.IntEnum):
     """Represents the width of a Unicode character. All East Asian Width classes resolve into
-    either `EffectiveWidth.NARROW`, `EffectiveWidth.WIDE`, or `EffectiveWidth.AMBIGUOUS`."""
+    either `EffectiveWidth.NARROW`, `EffectiveWidth.WIDE`, or `EffectiveWidth.AMBIGUOUS`.
+    """
 
     ZERO = 0
     """ Zero columns wide. """
@@ -148,10 +150,10 @@ def load_zero_widths() -> "list[bool]":
     """Returns a list `l` where `l[c]` is true if codepoint `c` is considered a zero-width
     character. `c` is considered a zero-width character if `c` is in general categories
     `Cc`, `Cf`, `Mn`, or `Me` (determined by fetching and processing `UnicodeData.txt`),
-    or if it has the `Default_Ignorable_Code_Point` property (determined by fetching
-    and processing `DerivedCoreProperties.txt`)."""
+    if it has the `Default_Ignorable_Code_Point` property (determined by fetching
+    and processing `DerivedCoreProperties.txt`), or if it has a `Hangul_Syllable_Type`
+    of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`)."""
 
-    zw_cat_codes = ["Cc", "Cf", "Mn", "Me"]
     zw_map = []
 
     with fetch_open("UnicodeData.txt") as categories:
@@ -164,7 +166,7 @@ def load_zero_widths() -> "list[bool]":
                 raw_data[1],
                 raw_data[2],
             ]
-            zero_width = cat_code in zw_cat_codes
+            zero_width = cat_code in ["Cc", "Cf", "Mn", "Me"]
 
             assert current <= codepoint
             while current <= codepoint:
@@ -182,30 +184,56 @@ def load_zero_widths() -> "list[bool]":
             zw_map.append(False)
 
     with fetch_open("DerivedCoreProperties.txt") as properties:
-        single = re.compile(r"^([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point +# (\w+)")
-        multiple = re.compile(r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point +# (\w+)")
+        single = re.compile(r"^([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point\s+")
+        multiple = re.compile(
+            r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point\s+"
+        )
 
         for line in properties.readlines():
-            raw_data = None  # (low, high, category)
+            raw_data = None  # (low, high)
             if match := single.match(line):
-                raw_data = (match.group(1), match.group(1), match.group(2))
+                raw_data = (match.group(1), match.group(1))
             elif match := multiple.match(line):
-                raw_data = (match.group(1), match.group(2), match.group(3))
+                raw_data = (match.group(1), match.group(2))
             else:
                 continue
             low = int(raw_data[0], 16)
             high = int(raw_data[1], 16)
-            cat = raw_data[2]
-            if cat not in zw_cat_codes:
-                for cp in range(low, high + 1):
-                    zw_map[cp] = True
+            for cp in range(low, high + 1):
+                zw_map[cp] = True
+
+    # Treat `Hangul_Syllable_Type`s of `Vowel_Jamo` and `Trailing_Jamo`
+    # as zero-width. This matches the behavior of glibc `wcwidth`.
+    #
+    # Decomposed Hangul characters consist of 3 parts: a `Leading_Jamo`,
+    # a `Vowel_Jamo`, and an optional `Trailing_Jamo`. Together these combine
+    # into a single wide grapheme. So we treat vowel and trailing jamo as
+    # 0-width, such that only the width of the leading jamo is counted
+    # and the resulting grapheme has width 2.
+    with fetch_open("HangulSyllableType.txt") as categories:
+        single = re.compile(r"^([0-9A-F]+)\s+;\s+(V|T)\s+")
+        multiple = re.compile(r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+(V|T)\s+")
+
+        for line in categories.readlines():
+            raw_data = None  # (low, high)
+            if match := single.match(line):
+                raw_data = (match.group(1), match.group(1))
+            elif match := multiple.match(line):
+                raw_data = (match.group(1), match.group(2))
+            else:
+                continue
+            low = int(raw_data[0], 16)
+            high = int(raw_data[1], 16)
+            for cp in range(low, high + 1):
+                zw_map[cp] = True
 
     return zw_map
 
 
 class Bucket:
     """A bucket contains a group of codepoints and an ordered width list. If one bucket's width
-    list overlaps with another's width list, those buckets can be merged via `try_extend`."""
+    list overlaps with another's width list, those buckets can be merged via `try_extend`.
+    """
 
     def __init__(self):
         """Creates an empty bucket."""
@@ -254,9 +282,9 @@ def make_buckets(entries, low_bit: BitPos, cap_bit: BitPos) -> "list[Bucket]":
     same bucket. Returns a list of the buckets in increasing order of those bits."""
     num_bits = cap_bit - low_bit
     assert num_bits > 0
-    buckets = [Bucket() for _ in range(0, 2 ** num_bits)]
+    buckets = [Bucket() for _ in range(0, 2**num_bits)]
     mask = (1 << num_bits) - 1
-    for (codepoint, width) in entries:
+    for codepoint, width in entries:
         buckets[(codepoint >> low_bit) & mask].append(codepoint, width)
     return buckets
 
@@ -293,7 +321,7 @@ class Table:
             buckets.extend(make_buckets(entries, self.low_bit, self.cap_bit))
 
         for bucket in buckets:
-            for (i, existing) in enumerate(self.indexed):
+            for i, existing in enumerate(self.indexed):
                 if existing.try_extend(bucket):
                     self.entries.append(i)
                     break
@@ -307,7 +335,8 @@ class Table:
 
     def indices_to_widths(self):
         """Destructively converts the indices in this table to the `EffectiveWidth` values of
-        their buckets. Assumes that no bucket contains codepoints with different widths."""
+        their buckets. Assumes that no bucket contains codepoints with different widths.
+        """
         self.entries = list(map(lambda i: int(self.indexed[i].width()), self.entries))
         del self.indexed
 
@@ -339,7 +368,7 @@ def make_tables(
     to include in the top-level table."""
     tables = []
     entry_groups = [entries]
-    for (low_bit, cap_bit, offset_type) in table_cfgs:
+    for low_bit, cap_bit, offset_type in table_cfgs:
         table = Table(entry_groups, low_bit, cap_bit, offset_type)
         entry_groups = map(lambda bucket: bucket.entries(), table.buckets())
         tables.append(table)
@@ -350,7 +379,8 @@ def emit_module(
     out_name: str, unicode_version: "tuple[int, int, int]", tables: "list[Table]"
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
-    If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`."""
+    If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
+    """
     if os.path.exists(out_name):
         os.remove(out_name)
     with open(out_name, "w", newline="\n", encoding="utf-8") as module:
@@ -456,7 +486,7 @@ pub mod charwidth {
         )
 
         subtable_count = 1
-        for (i, table) in enumerate(tables):
+        for i, table in enumerate(tables):
             new_subtable_count = len(table.buckets())
             if i == len(tables) - 1:
                 table.indices_to_widths()  # for the last table, indices == widths
@@ -466,7 +496,7 @@ pub mod charwidth {
     /// Autogenerated. {subtable_count} sub-table(s). Consult [`lookup_width`] for layout info.
     static TABLES_{i}: [u8; {len(byte_array)}] = ["""
             )
-            for (j, byte) in enumerate(byte_array):
+            for j, byte in enumerate(byte_array):
                 # Add line breaks for every 15th entry (chosen to match what rustfmt does)
                 if j % 15 == 0:
                     module.write("\n       ")
@@ -506,15 +536,11 @@ def main(module_filename: str):
     # Override for soft hyphen
     width_map[0x00AD] = EffectiveWidth.NARROW
 
-    # Override for Hangul Jamo medial vowels & final consonants
-    for i in range(0x1160, 0x11FF + 1):
-        width_map[i] = EffectiveWidth.ZERO
-
     tables = make_tables(TABLE_CFGS, enumerate(width_map))
 
     print("------------------------")
     total_size = 0
-    for (i, table) in enumerate(tables):
+    for i, table in enumerate(tables):
         size_bytes = len(table.to_bytes())
         print(f"Table {i} Size: {size_bytes} bytes")
         total_size += size_bytes
