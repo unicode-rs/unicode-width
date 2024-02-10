@@ -255,3 +255,17 @@ fn test_hieroglyph_format_controls() {
     assert_eq!(UnicodeWidthChar::width('\u{13436}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{1343C}'), Some(1));
 }
+
+#[test]
+fn test_emoji_presentation() {
+    use super::{UnicodeWidthChar, UnicodeWidthStr};
+    #[cfg(feature = "no_std")]
+    use core::option::Option::Some;
+
+    assert_eq!(UnicodeWidthChar::width('\u{0023}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{FE0F}'), Some(0));
+    assert_eq!(UnicodeWidthStr::width("\u{0023}\u{FE0F}"), 2);
+    assert_eq!(UnicodeWidthStr::width("a\u{0023}\u{FE0F}a"), 4);
+    assert_eq!(UnicodeWidthStr::width("\u{0023}a\u{FE0F}"), 2);
+    assert_eq!(UnicodeWidthStr::width("a\u{FE0F}"), 1);
+}
