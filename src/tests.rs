@@ -201,7 +201,6 @@ fn test_default_ignorable() {
 
     assert_eq!(UnicodeWidthChar::width('\u{E0000}'), Some(0));
 
-    assert_eq!(UnicodeWidthChar::width('\u{115F}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{1160}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{3164}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{FFA0}'), Some(0));
@@ -215,6 +214,8 @@ fn test_jamo() {
 
     assert_eq!(UnicodeWidthChar::width('\u{1100}'), Some(2));
     assert_eq!(UnicodeWidthChar::width('\u{A97C}'), Some(2));
+    // Special case: U+115F HANGUL CHOSEONG FILLER
+    assert_eq!(UnicodeWidthChar::width('\u{115F}'), Some(2));
     assert_eq!(UnicodeWidthChar::width('\u{1160}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{D7C6}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{11A8}'), Some(0));

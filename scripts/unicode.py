@@ -210,7 +210,8 @@ def load_zero_widths() -> "list[bool]":
             for cp in range(low, high + 1):
                 zw_map[cp] = False
 
-    # `Default_Ignorable_Code_Point`s also have 0 width
+    # `Default_Ignorable_Code_Point`s also have 0 width:
+    # https://www.unicode.org/faq/unsup_char.html#3
     with fetch_open("DerivedCoreProperties.txt") as properties:
         single = re.compile(r"^([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point\s+")
         multiple = re.compile(
@@ -238,6 +239,8 @@ def load_zero_widths() -> "list[bool]":
     # into a single wide grapheme. So we treat vowel and trailing jamo as
     # 0-width, such that only the width of the leading jamo is counted
     # and the resulting grapheme has width 2.
+    #
+    # (See the Unicode Standard sections 3.12 and 18.6 for more on Hangul)
     with fetch_open("HangulSyllableType.txt") as categories:
         single = re.compile(r"^([0-9A-F]+)\s+;\s+(V|T)\s+")
         multiple = re.compile(r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+(V|T)\s+")
@@ -255,6 +258,12 @@ def load_zero_widths() -> "list[bool]":
             for cp in range(low, high + 1):
                 zw_map[cp] = True
 
+    # Special case: U+115F HANGUL CHOSEONG FILLER.
+    # U+115F is a `Default_Ignorable_Code_Point`, and therefore would normally have
+    # zero width. However, the expected usage is to combine it with vowel or trailing jamo
+    # (which are considered 0-width on their own) to form a composed Hangul syllable with
+    # width 2. Therefore, we treat it as having width 2.
+    zw_map[0x115F] = False
     return zw_map
 
 
@@ -541,8 +550,8 @@ def main(module_filename: str):
 
     We obey the following rules in decreasing order of importance:
     - The soft hyphen (`U+00AD`) is single-width. (https://archive.is/fCT3c)
-    - Hangul Jamo medial vowels & final consonants are zero-width.
-    - All `Default_Ignorable_Code_Point`s are zero-width.
+    - Hangul jamo medial vowels & final consonants are zero-width.
+    - All `Default_Ignorable_Code_Point`s are zero-width, except for U+115F HANGUL CHOSEONG FILLER.
     - All codepoints in general categories `Cc`, `Cf`, `Mn`, or `Me` are zero-width,
       except for `Prepended_Concatenation_Mark`s.
     - All codepoints with an East Asian Width of `Ambigous` are ambiguous-width.
