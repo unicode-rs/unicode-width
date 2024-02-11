@@ -26,7 +26,8 @@ fn main() {
 
 **NOTE:** The computed width values may not match the actual rendered column
 width. For example, the woman scientist emoji comprises of a woman emoji, a
-zero-width joiner and a microscope emoji.
+zero-width joiner and a microscope emoji. Such [emoji ZWJ sequences](https://www.unicode.org/reports/tr51/#Emoji_ZWJ_Sequences)
+are considered to have the sum of the widths of their constituent parts:
 
 ```rust
 extern crate unicode_width;
@@ -39,8 +40,10 @@ fn main() {
 }
 ```
 
-See [Unicode Standard Annex #11][UAX11] for precise details on what is and isn't
-covered by this crate.
+Additionally, [defective combining character sequences](https://unicode.org/glossary/#defective_combining_character_sequence)
+and nonstandard [Korean jamo](https://unicode.org/glossary/#jamo) sequences may
+be rendered with a different width than what this crate says. (This is not an
+exhaustive list.)
 
 ## features
 
