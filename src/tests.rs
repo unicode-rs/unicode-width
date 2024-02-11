@@ -220,3 +220,15 @@ fn test_jamo() {
     assert_eq!(UnicodeWidthChar::width('\u{11A8}'), Some(0));
     assert_eq!(UnicodeWidthChar::width('\u{D7FB}'), Some(0));
 }
+
+#[test]
+fn test_prepended_concatenation_mark() {
+    use super::UnicodeWidthChar;
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{None, Some};
+
+    assert_eq!(UnicodeWidthChar::width('\u{0600}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{070F}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{08E2}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{110BD}'), Some(1));
+}

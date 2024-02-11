@@ -148,14 +148,17 @@ def load_east_asian_widths() -> "list[EffectiveWidth]":
 
 def load_zero_widths() -> "list[bool]":
     """Returns a list `l` where `l[c]` is true if codepoint `c` is considered a zero-width
-    character. `c` is considered a zero-width character if `c` is in general categories
-    `Cc`, `Cf`, `Mn`, or `Me` (determined by fetching and processing `UnicodeData.txt`),
-    if it has the `Default_Ignorable_Code_Point` property (determined by fetching
-    and processing `DerivedCoreProperties.txt`), or if it has a `Hangul_Syllable_Type`
-    of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`)."""
+    character. `c` is considered a zero-width character if
+
+    - it is in general categories `Cc`, `Cf`, `Mn`, or `Me` (determined from `UnicodeData.txt`),
+      and is not a `Prepended_Concatenation_Mark` (determined from `PropList.txt`),
+    - or if it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`),
+    - or if it has a `Hangul_Syllable_Type` of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`).
+    """
 
     zw_map = []
 
+    # Characters with general category  `Cc`, `Cf`, `Mn`, or `Me` have 0 width...
     with fetch_open("UnicodeData.txt") as categories:
         current = 0
         for line in categories.readlines():
@@ -183,6 +186,31 @@ def load_zero_widths() -> "list[bool]":
             # Catch any leftover codepoints. They must be unassigned (so nonzero width)
             zw_map.append(False)
 
+    # ...unless they are a `Prepended_Concatenation_Mark`.
+    # https://www.unicode.org/reports/tr44/:
+    # "A small class of visible format controls,
+    # which precede and then span a sequence of other characters, usually digits.
+    # These have also been known as "subtending marks",
+    # because most of them take a form which visually extends underneath the sequence of following digits."
+    with fetch_open("PropList.txt") as properties:
+        single = re.compile(r"^([0-9A-F]+)\s+;\s+Prepended_Concatenation_Mark\s+")
+        multiple = re.compile(
+            r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+Prepended_Concatenation_Mark\s+"
+        )
+        for line in properties.readlines():
+            raw_data = None  # (low, high)
+            if match := single.match(line):
+                raw_data = (match.group(1), match.group(1))
+            elif match := multiple.match(line):
+                raw_data = (match.group(1), match.group(2))
+            else:
+                continue
+            low = int(raw_data[0], 16)
+            high = int(raw_data[1], 16)
+            for cp in range(low, high + 1):
+                zw_map[cp] = False
+
+    # `Default_Ignorable_Code_Point`s also have 0 width
     with fetch_open("DerivedCoreProperties.txt") as properties:
         single = re.compile(r"^([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point\s+")
         multiple = re.compile(
@@ -512,16 +540,18 @@ def main(module_filename: str):
     `module_filename`.
 
     We obey the following rules in decreasing order of importance:
-    - The soft hyphen (`U+00AD`) is single-width.
-    - Hangul Jamo medial vowels & final consonants (`U+1160..=U+11FF`) are zero-width.
-    - All codepoints in general categories `Cc`, `Cf`, `Mn`, and `Me` are zero-width.
+    - The soft hyphen (`U+00AD`) is single-width. (https://archive.is/fCT3c)
+    - Hangul Jamo medial vowels & final consonants are zero-width.
+    - All `Default_Ignorable_Code_Point`s are zero-width.
+    - All codepoints in general categories `Cc`, `Cf`, `Mn`, or `Me` are zero-width,
+      except for `Prepended_Concatenation_Mark`s.
     - All codepoints with an East Asian Width of `Ambigous` are ambiguous-width.
     - All codepoints with an East Asian Width of `Wide` or `Fullwidth` are double-width.
     - All other codepoints (including unassigned codepoints and codepoints with an East Asian Width
-    of `Neutral`, `Narrow`, or `Halfwidth`) are single-width.
+      of `Neutral`, `Narrow`, or `Halfwidth`) are single-width.
 
-    These rules are based off of Markus Kuhn's free `wcwidth()` implementation:
-    http://www.cl.cam.ac.uk/~mgk25/ucs/wcwidth.c"""
+    These rules are based off of UAX11, other Unicode standards, and various `wcwidth()` implementations.
+    """
     version = load_unicode_version()
     print(f"Generating module for Unicode {version[0]}.{version[1]}.{version[2]}")
 
