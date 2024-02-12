@@ -223,7 +223,7 @@ fn test_jamo() {
 }
 
 #[test]
-fn test_prepended_concatenation_mark() {
+fn test_prepended_concatenation_marks() {
     use super::UnicodeWidthChar;
     #[cfg(feature = "no_std")]
     use core::option::Option::{None, Some};
@@ -232,4 +232,26 @@ fn test_prepended_concatenation_mark() {
     assert_eq!(UnicodeWidthChar::width('\u{070F}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{08E2}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{110BD}'), Some(1));
+}
+
+#[test]
+fn test_interlinear_annotation_chars() {
+    use super::UnicodeWidthChar;
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{None, Some};
+
+    assert_eq!(UnicodeWidthChar::width('\u{FFF9}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{FFFA}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{FFFB}'), Some(1));
+}
+
+#[test]
+fn test_hieroglyph_format_controls() {
+    use super::UnicodeWidthChar;
+    #[cfg(feature = "no_std")]
+    use core::option::Option::{None, Some};
+
+    assert_eq!(UnicodeWidthChar::width('\u{13430}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{13436}'), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{1343C}'), Some(1));
 }
