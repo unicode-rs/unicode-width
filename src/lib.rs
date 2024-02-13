@@ -43,9 +43,10 @@
 //! ```
 
 #![deny(missing_docs, unsafe_code)]
-#![doc(html_logo_url = "https://unicode-rs.github.io/unicode-rs_sm.png",
-       html_favicon_url = "https://unicode-rs.github.io/unicode-rs_sm.png")]
-
+#![doc(
+    html_logo_url = "https://unicode-rs.github.io/unicode-rs_sm.png",
+    html_favicon_url = "https://unicode-rs.github.io/unicode-rs_sm.png"
+)]
 #![cfg_attr(feature = "bench", feature(test))]
 #![no_std]
 
@@ -87,10 +88,14 @@ pub trait UnicodeWidthChar {
 
 impl UnicodeWidthChar for char {
     #[inline]
-    fn width(self) -> Option<usize> { cw::width(self, false) }
+    fn width(self) -> Option<usize> {
+        cw::width(self, false)
+    }
 
     #[inline]
-    fn width_cjk(self) -> Option<usize> { cw::width(self, true) }
+    fn width_cjk(self) -> Option<usize> {
+        cw::width(self, true)
+    }
 }
 
 /// Methods for determining displayed width of Unicode strings.
@@ -103,7 +108,7 @@ pub trait UnicodeWidthStr {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 1 column wide. This is consistent with the recommendations for
     /// non-CJK contexts, or when the context cannot be reliably determined.
-    fn width<'a>(&'a self) -> usize;
+    fn width(&self) -> usize;
 
     /// Returns the string's displayed width in columns.
     ///
@@ -113,7 +118,7 @@ pub trait UnicodeWidthStr {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 column wide. This is consistent with the recommendations for
     /// CJK contexts.
-    fn width_cjk<'a>(&'a self) -> usize;
+    fn width_cjk(&self) -> usize;
 }
 
 impl UnicodeWidthStr for str {
