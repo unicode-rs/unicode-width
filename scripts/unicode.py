@@ -410,29 +410,29 @@ def make_tables(
     return tables
 
 
-def variation_sequences() -> "list[tuple[int, int]]":
+def load_variation_sequences(width_map) -> "list[int]":
     """Outputs a list of character ranages, corresponding to all the valid characters for starting
-    an emoji presentation sequence."""
+    an emoji presentation sequence, exclusing those that are always wide."""
 
     with fetch_open("emoji/emoji-variation-sequences.txt") as sequences:
         sequence = re.compile(r"^([0-9A-F]+)\s+FE0F\s*;\s+emoji style")
-        ranges = []
+        codepoints = []
         for line in sequences.readlines():
             if match := sequence.match(line):
                 cp = int(match.group(1), 16)
-                if ranges != [] and ranges[-1][1] == cp - 1:
-                    ranges[-1] = (ranges[-1][0], cp)
-                else:
-                    ranges.append((cp, cp))
-
-    return ranges
+                if width_map[cp] == EffectiveWidth.WIDE:
+                    # this character would be width 2 even outside a variation sequence,
+                    # so we don't need to store its info
+                    continue
+                codepoints.append(cp)
+    return codepoints
 
 
 def emit_module(
     out_name: str,
     unicode_version: "tuple[int, int, int]",
     tables: "list[Table]",
-    emoji_variations: "list[tuple[int, int]]",
+    emoji_variations: "list[int]",
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
     If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
@@ -517,19 +517,7 @@ pub mod charwidth {
     /// Emoji presentation sequences are considered to have width 2.
     #[inline]
     pub fn starts_emoji_presentation_seq(c: char) -> bool {
-        use core::cmp::Ordering::{Equal, Greater, Less};
-
-        EMOJI_PRESENTATION_RANGES
-            .binary_search_by(|&(lo, hi)| {
-                if lo > c {
-                    Greater
-                } else if hi < c {
-                    Less
-                } else {
-                    Equal
-                }
-            })
-            .is_ok()
+        EMOJI_PRESENTATION_RANGES.binary_search(&c).is_ok()
     }
 """
         )
@@ -589,11 +577,11 @@ pub mod charwidth {
             f"""
     /// Each tuple corresponds to a range (inclusive at both ends)
     /// of characters that can start an emoji presentation sequence.
-    static EMOJI_PRESENTATION_RANGES: [(char, char); {len(emoji_variations)}] = [
+    static EMOJI_PRESENTATION_RANGES: [char; {len(emoji_variations)}] = [
 """
         )
-        for lo, hi in emoji_variations:
-            module.write(f"        ('\\u{{{lo:X}}}', '\\u{{{hi:X}}}'),\n")
+        for cp in emoji_variations:
+            module.write(f"        '\\u{{{cp:X}}}',\n")
         module.write("    ];\n")
 
         module.write("}\n")
@@ -631,7 +619,7 @@ def main(module_filename: str):
     width_map[0x00AD] = EffectiveWidth.NARROW
 
     tables = make_tables(TABLE_CFGS, enumerate(width_map))
-    emoji_variations = variation_sequences()
+    emoji_variations = load_variation_sequences(width_map)
 
     print("------------------------")
     total_size = 0
