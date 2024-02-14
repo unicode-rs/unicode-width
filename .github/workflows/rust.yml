@@ -24,6 +24,10 @@ jobs:
       run: cargo test --verbose
     - name: Build docs
       run: cargo doc
+    - name: Check formatting
+      run: cargo fmt --check
+    - name: Check clippy
+      run: cargo clippy
   regen:
     runs-on: ubuntu-latest
     steps:
