@@ -23,6 +23,8 @@ import math
 import os
 import re
 import sys
+from collections import defaultdict
+from itertools import batched
 
 NUM_CODEPOINTS = 0x110000
 """An upper bound for which `range(0, NUM_CODEPOINTS)` contains Unicode's codespace."""
@@ -410,9 +412,9 @@ def make_tables(
     return tables
 
 
-def load_variation_sequences(width_map) -> "list[int]":
+def load_variation_sequences() -> "list[int]":
     """Outputs a list of character ranages, corresponding to all the valid characters for starting
-    an emoji presentation sequence, exclusing those that are always wide."""
+    an emoji presentation sequence."""
 
     with fetch_open("emoji/emoji-variation-sequences.txt") as sequences:
         sequence = re.compile(r"^([0-9A-F]+)\s+FE0F\s*;\s+emoji style")
@@ -420,19 +422,68 @@ def load_variation_sequences(width_map) -> "list[int]":
         for line in sequences.readlines():
             if match := sequence.match(line):
                 cp = int(match.group(1), 16)
-                if width_map[cp] == EffectiveWidth.WIDE:
-                    # this character would be width 2 even outside a variation sequence,
-                    # so we don't need to store its info
-                    continue
                 codepoints.append(cp)
     return codepoints
+
+
+def make_variation_sequence_table(
+    seqs: "list[int]",
+    width_map,
+) -> "tuple[list[int], list[list[int]]]":
+    """Generates 2-level look up table for whether a codepoint might start an emoji presentation sequence.
+    (Characters that are always wide may be excluded.)
+    First level maps the most significant byte to a 4-bit index (or 0xFF if can't possibly start such a sequence),
+    second level is a bit array (each leaf is 512 bits long)."""
+    # The structure of the table currently relies on this.
+    # It's unlikely to be a problem in the near future
+    # as this is enough to encompass the entire Basic Multilingual Plane and
+    # Supplementary Multilingual Plane.
+    # And the fix is easy if it ever does become a problem:
+    # just check bits 1 more significant for the index,
+    # and use 1024-bit leaves instead of 512-bit.
+    assert seqs[-1] <= 0x1FFFF
+
+    prefixes_dict = defaultdict(list)
+    for cp in seqs:
+        prefixes_dict[cp >> 9].append(cp & 0x1FF)
+
+    # We don't strictly need to keep track of characters that are always wide,
+    # because being in an emoji variation seq won't affect their width.
+    # So store their info only when it wouldn't inflate the size of the tables.
+    keys = list(prefixes_dict.keys())
+    for k in keys:
+        if all(map(lambda cp: width_map[(k << 9) | cp] == EffectiveWidth.WIDE, prefixes_dict[k])):
+            del prefixes_dict[k]
+
+    # Another assumption made by the data structure.
+    # Ensures 4 bits are enough to index into subtable
+    assert len(prefixes_dict.keys()) <= 15
+    index_nibbles = [0xF] * 256
+    for idx, k in enumerate(prefixes_dict.keys()):
+        index_nibbles[k] = idx
+
+    index = []
+    for tup in batched(index_nibbles, 2):
+        next = 0
+        for i in range(0, 2):
+            next |= tup[i] << (4 * i)
+        index.append(next)
+
+    leaves = []
+    for leaf_idx, cps in enumerate(prefixes_dict.values()):
+        leaf = [0] * 64
+        for cp in cps:
+            idx_in_leaf, bit_shift = divmod(cp, 8)
+            leaf[idx_in_leaf] |= 1 << bit_shift
+        leaves.append(leaf)
+    return (index, leaves)
 
 
 def emit_module(
     out_name: str,
     unicode_version: "tuple[int, int, int]",
     tables: "list[Table]",
-    emoji_variations: "list[int]",
+    variation_table: "tuple[list[int], list[list[int]]]",
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
     If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
@@ -509,16 +560,33 @@ pub mod charwidth {
 """
         )
 
+        variation_idx, variation_leaves = variation_table
+
         module.write(
-            """
+            f"""
     /// Whether this character forms an [emoji presentation sequence]
     /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
-    /// when followed by `'\\u{FEOF}'`.
+    /// when followed by `'\\u{{FEOF}}'`.
     /// Emoji presentation sequences are considered to have width 2.
+    /// This may spuriously return `false` for all characters that are always wide.
     #[inline]
-    pub fn starts_emoji_presentation_seq(c: char) -> bool {
-        EMOJI_PRESENTATION_RANGES.binary_search(&c).is_ok()
-    }
+    pub fn starts_emoji_presentation_seq(c: char) -> bool {{
+        let cp: u32 = c.into();
+        let Ok(top_byte): Result<u8, _> = ((cp) >> 9).try_into() else {{
+            return false;
+        }};
+
+        let index_byte = EMOJI_PRESENTATION_INDEX[usize::from(top_byte >> 1)];
+        let index_nibble = (index_byte >> (4 * (top_byte & 1))) & 0xF;
+        if index_nibble >= {len(variation_leaves)} {{
+            return false;
+        }}
+
+        let leaf_byte = EMOJI_PRESENTATION_LEAVES[usize::from(index_nibble)]
+            [usize::try_from((cp >> 3) & 0x3F).unwrap()];
+
+        ((leaf_byte >> (cp & 7)) & 1) == 1
+    }}
 """
         )
 
@@ -575,15 +643,36 @@ pub mod charwidth {
 
         module.write(
             f"""
-    /// Each tuple corresponds to a range (inclusive at both ends)
-    /// of characters that can start an emoji presentation sequence.
-    static EMOJI_PRESENTATION_RANGES: [char; {len(emoji_variations)}] = [
+    /// An array of 256 4-bit nibbles. Index with bytes 9-16 (where LSB is 0)
+    /// of the char you want to test. 0xF means it's not part of a presentation seq,
+    /// anything else means index into the next table.
+    static EMOJI_PRESENTATION_INDEX: [u8; {len(variation_idx)}] = [
 """
         )
-        for cp in emoji_variations:
-            module.write(f"        '\\u{{{cp:X}}}',\n")
+        for row in batched(variation_idx, 15):
+            module.write("       ")
+            for idx in row:
+                module.write(f" 0x{idx:02X},")
+            module.write("\n")
         module.write("    ];\n")
 
+        module.write(
+            f"""
+    /// Array of 512-bit bitmaps. Index into the correct (obtained from `EMOJI_PRESENTATION_INDEX`)
+    /// bitmap with the 9 LSB of your codepoint to get whether it can start an emoji presentation seq.
+    static EMOJI_PRESENTATION_LEAVES: [[u8; 64]; {len(variation_leaves)}] = [
+"""
+        )
+        for leaf in variation_leaves:
+            module.write("        [\n")
+            for row in batched(leaf, 14):
+                module.write("           ")
+                for entry in row:
+                    module.write(f" 0x{entry:02X},")
+                module.write("\n")
+            module.write("        ],\n")
+
+        module.write("    ];\n")
         module.write("}\n")
 
 
@@ -593,6 +682,7 @@ def main(module_filename: str):
     `module_filename`.
 
     We obey the following rules in decreasing order of importance:
+    - Emoji presentation sequences are double-width.
     - The soft hyphen (`U+00AD`) is single-width. (https://archive.is/fCT3c)
     - Hangul jamo medial vowels & final consonants are zero-width.
     - All `Default_Ignorable_Code_Point`s are zero-width, except for U+115F HANGUL CHOSEONG FILLER.
@@ -619,18 +709,26 @@ def main(module_filename: str):
     width_map[0x00AD] = EffectiveWidth.NARROW
 
     tables = make_tables(TABLE_CFGS, enumerate(width_map))
-    emoji_variations = load_variation_sequences(width_map)
+
+    emoji_variations = load_variation_sequences()
+    variation_table = make_variation_sequence_table(emoji_variations, width_map)
 
     print("------------------------")
     total_size = 0
     for i, table in enumerate(tables):
         size_bytes = len(table.to_bytes())
-        print(f"Table {i} Size: {size_bytes} bytes")
+        print(f"Table {i} size: {size_bytes} bytes")
         total_size += size_bytes
+    emoji_index_size = len(variation_table[0])
+    print(f"Emoji Presentation Index Size: {emoji_index_size} bytes")
+    total_size += emoji_index_size
+    emoji_leaves_size = len(variation_table[1]) * len(variation_table[1][0])
+    print(f"Emoji Presentation Leaves Size: {emoji_leaves_size} bytes")
+    total_size += emoji_leaves_size
     print("------------------------")
     print(f"  Total Size: {total_size} bytes")
 
-    emit_module(module_filename, version, tables, emoji_variations)
+    emit_module(module_filename, version, tables, variation_table)
     print(f'Wrote to "{module_filename}"')
 
 

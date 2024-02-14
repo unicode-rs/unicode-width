@@ -285,4 +285,11 @@ fn test_emoji_presentation() {
     assert_eq!(UnicodeWidthStr::width("a\u{0023}\u{FE0F}a"), 4);
     assert_eq!(UnicodeWidthStr::width("\u{0023}a\u{FE0F}"), 2);
     assert_eq!(UnicodeWidthStr::width("a\u{FE0F}"), 1);
+    assert_eq!(UnicodeWidthStr::width("\u{0023}\u{0023}\u{FE0F}a"), 4);
+
+    assert_eq!(UnicodeWidthStr::width("\u{002A}\u{FE0F}"), 2);
+    assert_eq!(UnicodeWidthStr::width("\u{23F9}\u{FE0F}"), 2);
+    assert_eq!(UnicodeWidthStr::width("\u{24C2}\u{FE0F}"), 2);
+    assert_eq!(UnicodeWidthStr::width("\u{1F6F3}\u{FE0F}"), 2);
+    assert_eq!(UnicodeWidthStr::width("\u{1F700}\u{FE0F}"), 1);
 }
