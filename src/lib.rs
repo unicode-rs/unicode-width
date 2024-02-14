@@ -42,7 +42,8 @@
 //! unicode-width = "0.1.5"
 //! ```
 
-#![deny(missing_docs, unsafe_code)]
+#![forbid(unsafe_code)]
+#![deny(missing_docs)]
 #![doc(
     html_logo_url = "https://unicode-rs.github.io/unicode-rs_sm.png",
     html_favicon_url = "https://unicode-rs.github.io/unicode-rs_sm.png"
