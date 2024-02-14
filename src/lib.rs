@@ -9,8 +9,11 @@
 // except according to those terms.
 
 //! Determine displayed width of `char` and `str` types according to
-//! [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-//! rules.
+//! [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/),
+//! other portions of the Unicode standard, and common implementations of
+//! POSIX [`wcwidth()`](https://pubs.opengroup.org/onlinepubs/9699919799/).
+//! See the [Rules for determining width](#rules-for-determining-width) section
+//! for the exact rules.
 //!
 //! ```rust
 //! extern crate unicode_width;
@@ -41,6 +44,34 @@
 //! [dependencies]
 //! unicode-width = "0.1.5"
 //! ```
+//! # Rules for determining width
+//!
+//! This crate currently uses the following rules to determine the width of a
+//! character or string, in order of decreasing precedence. These may be tweaked in the future.
+//!
+//! 1. [Emoji presentation sequences](https://unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+//!    have width 2. (The width of a string may therefore differ from the sum of the widths of its characters.)
+//! 2. [`'\u{00AD}'` SOFT HYPHEN](https://util.unicode.org/UnicodeJsps/character.jsp?a=00AD) has width 1.
+//! 3. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
+//! 4. The following have width 0:
+//!    1. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AHangul_Syllable_Type%253D%252FV%7CT%252F%253A%5D)
+//!       with a [`Hangul_Syllable_Type`](https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G45593)
+//!       of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`),
+//!    2. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253ADefault_Ignorable_Code_Point%253DYes%253A%5D)
+//!       with the [`Default_Ignorable_Code_Point`](https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095) property,
+//!    3. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AGeneral_Category%253D%252FMn%7CMe%252F%253A%5D)
+//!       with a [`General_Category`](https://www.unicode.org/versions/Unicode15.0.0/ch04.pdf#G124142)
+//!       of `Nonspacing_Mark` (`Mn`) or `Enclosing_Mark` (`Me`), and
+//!    4. [`'\0'` NUL](https://util.unicode.org/UnicodeJsps/character.jsp?a=0000).
+//! 5. The [control characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AGeneral_Category%253DCc%253A%5D)
+//!    have no defined width, and are considered to have width 0 when contained within a string.
+//! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AEast_Asian_Width%253D%252FF%7CW%252F%253A%5D)
+//!    with an [`East_Asian_Width`](https://www.unicode.org/reports/tr11/#ED1) of [`Fullwidth` (`F`)](https://www.unicode.org/reports/tr11/#ED2)
+//!    or [`Wide` (`W`)](https://www.unicode.org/reports/tr11/#ED4) have width 2.
+//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AEast_Asian_Width%253DA%253A%5D)
+//!    with an `East_Asian_Width` of [`Ambiguous` (`A`)](https://www.unicode.org/reports/tr11/#ED6)
+//!    have width 2 in an East Asian context, and width 1 otherwise.
+//! 8. All other characters have width 1.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -110,8 +141,7 @@ pub trait UnicodeWidthStr {
     /// as 1 column wide. This is consistent with the recommendations for
     /// non-CJK contexts, or when the context cannot be reliably determined.
     ///
-    /// Also consistent with UAX11, this function treats [emoji presentation sequences]
-    /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// Also consistent with UAX11, this function treats [emoji presentation sequences](https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
     /// as 2 columns wide. This means that the width of a string may not equal
     /// the sum of the widths of its individual characters.
     fn width(&self) -> usize;
@@ -125,8 +155,7 @@ pub trait UnicodeWidthStr {
     /// as 2 column wide. This is consistent with the recommendations for
     /// CJK contexts.
     ///
-    /// Also consistent with UAX11, this function treats [emoji presentation sequences]
-    /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// Also consistent with UAX11, this function treats [emoji presentation sequences](https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
     /// as 2 columns wide. This means that the width of a string may not equal
     /// the sum of the widths of its individual characters.
     fn width_cjk(&self) -> usize;
