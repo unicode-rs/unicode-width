@@ -9,13 +9,12 @@
 // except according to those terms.
 
 #[cfg(feature = "bench")]
-use super::{UnicodeWidthChar, UnicodeWidthStr};
-#[cfg(feature = "bench")]
-use std::iter;
-#[cfg(feature = "bench")]
-use test::Bencher;
+use std::{iter, string::String};
 
-use std::prelude::v1::*;
+#[cfg(feature = "bench")]
+use test::{self, Bencher};
+
+use super::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[cfg(feature = "bench")]
 #[bench]
@@ -95,6 +94,7 @@ fn simple_width_match(c: char) -> Option<usize> {
 }
 #[cfg(feature = "bench")]
 #[bench]
+
 fn enwik8(b: &mut Bencher) {
     // To benchmark, download & unzip `enwik8` from https://data.deepai.org/enwik8.zip
     let data_path = "bench_data/enwik8";
@@ -103,13 +103,25 @@ fn enwik8(b: &mut Bencher) {
 }
 #[cfg(feature = "bench")]
 #[bench]
+
 fn jawiki(b: &mut Bencher) {
-    // To benchmark, download & extract `jawiki-20220501-pages-articles-multistream-index.txt` from
-    // https://dumps.wikimedia.org/jawiki/20220501/jawiki-20220501-pages-articles-multistream-index.txt.bz2
-    let data_path = "bench_data/jawiki-20220501-pages-articles-multistream-index.txt";
+    // To benchmark, download & extract `jawiki-20240201-pages-articles-multistream-index.txt` from
+    // https://dumps.wikimedia.org/jawiki/20240201/jawiki-20240201-pages-articles-multistream-index.txt.bz2
+    let data_path = "bench_data/jawiki-20240201-pages-articles-multistream-index.txt";
     let string = std::fs::read_to_string(data_path).unwrap_or_default();
     b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
 }
+
+#[cfg(feature = "bench")]
+#[bench]
+
+fn emoji(b: &mut Bencher) {
+    // To benchmark, download emoji-style.txt from https://www.unicode.org/emoji/charts/emoji-style.txt
+    let data_path = "bench_data/emoji-style.txt";
+    let string = std::fs::read_to_string(data_path).unwrap_or_default();
+    b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
+}
+
 #[test]
 fn test_str() {
     use super::UnicodeWidthStr;
@@ -130,8 +142,6 @@ fn test_str() {
 #[test]
 fn test_emoji() {
     // Example from the README.
-    use super::UnicodeWidthStr;
-
     assert_eq!(UnicodeWidthStr::width("👩"), 2); // Woman
     assert_eq!(UnicodeWidthStr::width("🔬"), 2); // Microscope
     assert_eq!(UnicodeWidthStr::width("👩‍🔬"), 4); // Woman scientist
@@ -139,8 +149,6 @@ fn test_emoji() {
 
 #[test]
 fn test_char() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('ｈ'), Some(2));
     assert_eq!('ｈ'.width_cjk(), Some(2));
     assert_eq!(UnicodeWidthChar::width('\x00'), Some(0));
@@ -153,8 +161,6 @@ fn test_char() {
 
 #[test]
 fn test_char2() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\x00'), Some(0));
     assert_eq!('\x00'.width_cjk(), Some(0));
 
@@ -182,15 +188,11 @@ fn test_char2() {
 
 #[test]
 fn unicode_12() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{1F971}'), Some(2));
 }
 
 #[test]
 fn test_default_ignorable() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{E0000}'), Some(0));
 
     assert_eq!(UnicodeWidthChar::width('\u{1160}'), Some(0));
@@ -200,8 +202,6 @@ fn test_default_ignorable() {
 
 #[test]
 fn test_jamo() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{1100}'), Some(2));
     assert_eq!(UnicodeWidthChar::width('\u{A97C}'), Some(2));
     // Special case: U+115F HANGUL CHOSEONG FILLER
@@ -214,8 +214,6 @@ fn test_jamo() {
 
 #[test]
 fn test_prepended_concatenation_marks() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{0600}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{070F}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{08E2}'), Some(1));
@@ -224,8 +222,6 @@ fn test_prepended_concatenation_marks() {
 
 #[test]
 fn test_interlinear_annotation_chars() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{FFF9}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{FFFA}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{FFFB}'), Some(1));
@@ -233,8 +229,6 @@ fn test_interlinear_annotation_chars() {
 
 #[test]
 fn test_hieroglyph_format_controls() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{13430}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{13436}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{1343C}'), Some(1));
@@ -275,10 +269,6 @@ fn test_canonical_equivalence() {
 
 #[test]
 fn test_emoji_presentation() {
-    use super::{UnicodeWidthChar, UnicodeWidthStr};
-    #[cfg(feature = "no_std")]
-    use core::option::Option::Some;
-
     assert_eq!(UnicodeWidthChar::width('\u{0023}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{FE0F}'), Some(0));
     assert_eq!(UnicodeWidthStr::width("\u{0023}\u{FE0F}"), 2);
