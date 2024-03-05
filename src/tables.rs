@@ -65,19 +65,32 @@ pub mod charwidth {
     #[inline]
     pub fn starts_emoji_presentation_seq(c: char) -> bool {
         let cp: u32 = c.into();
-        let Ok(top_byte): Result<u8, _> = ((cp) >> 9).try_into() else {
+
+        // The largest codepoint for which this function returns `true`
+        // has 17 significant bits. Extract the most significant 8 of these,
+        // or return `false` if `cp` is outside this range.
+        let Ok(top_byte): Result<u8, _> = (cp >> 9).try_into() else {
             return false;
         };
 
+        // Use the byte from above to obtain the corresponding 4-bit index
+        // from the indexes table.
         let index_byte = EMOJI_PRESENTATION_INDEX[usize::from(top_byte >> 1)];
         let index_nibble = (index_byte >> (4 * (top_byte & 1))) & 0xF;
-        if index_nibble >= 11 {
+
+        // If the index is the 0xF sentinel, then no codepoint with bits 9-16 (0 indexed)
+        // equal to `top_byte` can change width when part of an emoji presentation seq,
+        // so return `false`.
+        let Some(leaf_row) = EMOJI_PRESENTATION_LEAVES.get(usize::from(index_nibble)) else {
             return false;
-        }
+        };
 
-        let leaf_byte = EMOJI_PRESENTATION_LEAVES[usize::from(index_nibble)]
-            [usize::try_from((cp >> 3) & 0x3F).unwrap()];
+        // Extract the 3-8th (0-indexed) least significant bits of `cp`,
+        // and use them to index into `leaf_row`.
+        let leaf_row_idx = usize::try_from((cp >> 3) & 0x3F).unwrap();
+        let leaf_byte = leaf_row[leaf_row_idx];
 
+        // Use the 3 LSB of `cp` to index into `leaf_byte`.
         ((leaf_byte >> (cp & 7)) & 1) == 1
     }
 

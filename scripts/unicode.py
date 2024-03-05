@@ -69,7 +69,7 @@ def fetch_open(filename: str):
     fetches it from `http://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
     """
     basename = os.path.basename(filename)
-    if not os.path.exists(os.path.basename(filename)):
+    if not os.path.exists(basename):
         os.system(f"curl -O http://www.unicode.org/Public/UNIDATA/{filename}")
     try:
         return open(basename, encoding="utf-8")
@@ -417,6 +417,8 @@ def load_variation_sequences() -> "list[int]":
     an emoji presentation sequence."""
 
     with fetch_open("emoji/emoji-variation-sequences.txt") as sequences:
+        # Match all emoji presentation sequences
+        # (one codepoint followed by U+FE0F, and labeled "emoji style")
         sequence = re.compile(r"^([0-9A-F]+)\s+FE0F\s*;\s+emoji style")
         codepoints = []
         for line in sequences.readlines():
@@ -452,7 +454,12 @@ def make_variation_sequence_table(
     # So store their info only when it wouldn't inflate the size of the tables.
     keys = list(prefixes_dict.keys())
     for k in keys:
-        if all(map(lambda cp: width_map[(k << 9) | cp] == EffectiveWidth.WIDE, prefixes_dict[k])):
+        if all(
+            map(
+                lambda cp: width_map[(k << 9) | cp] == EffectiveWidth.WIDE,
+                prefixes_dict[k],
+            )
+        ):
             del prefixes_dict[k]
 
     # Another assumption made by the data structure.
@@ -470,7 +477,7 @@ def make_variation_sequence_table(
         index.append(next)
 
     leaves = []
-    for leaf_idx, cps in enumerate(prefixes_dict.values()):
+    for cps in prefixes_dict.values():
         leaf = [0] * 64
         for cp in cps:
             idx_in_leaf, bit_shift = divmod(cp, 8)
@@ -572,19 +579,32 @@ pub mod charwidth {
     #[inline]
     pub fn starts_emoji_presentation_seq(c: char) -> bool {{
         let cp: u32 = c.into();
-        let Ok(top_byte): Result<u8, _> = ((cp) >> 9).try_into() else {{
+
+        // The largest codepoint for which this function returns `true`
+        // has 17 significant bits. Extract the most significant 8 of these,
+        // or return `false` if `cp` is outside this range.
+        let Ok(top_byte): Result<u8, _> = (cp >> 9).try_into() else {{
             return false;
         }};
 
+        // Use the byte from above to obtain the corresponding 4-bit index
+        // from the indexes table.
         let index_byte = EMOJI_PRESENTATION_INDEX[usize::from(top_byte >> 1)];
         let index_nibble = (index_byte >> (4 * (top_byte & 1))) & 0xF;
-        if index_nibble >= {len(variation_leaves)} {{
+
+        // If the index is the 0xF sentinel, then no codepoint with bits 9-16 (0 indexed)
+        // equal to `top_byte` can change width when part of an emoji presentation seq,
+        // so return `false`.
+        let Some(leaf_row) = EMOJI_PRESENTATION_LEAVES.get(usize::from(index_nibble)) else {{
             return false;
-        }}
+        }};
 
-        let leaf_byte = EMOJI_PRESENTATION_LEAVES[usize::from(index_nibble)]
-            [usize::try_from((cp >> 3) & 0x3F).unwrap()];
+        // Extract the 3-8th (0-indexed) least significant bits of `cp`,
+        // and use them to index into `leaf_row`.
+        let leaf_row_idx = usize::try_from((cp >> 3) & 0x3F).unwrap();
+        let leaf_byte = leaf_row[leaf_row_idx];
 
+        // Use the 3 LSB of `cp` to index into `leaf_byte`.
         ((leaf_byte >> (cp & 7)) & 1) == 1
     }}
 """
