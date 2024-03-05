@@ -15,7 +15,7 @@ use std::iter;
 use std::prelude::v1::*;
 
 #[cfg(feature = "bench")]
-use test::{self, Bencher};
+use test::Bencher;
 
 #[cfg(feature = "bench")]
 #[bench]

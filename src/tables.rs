@@ -15,8 +15,6 @@
 pub const UNICODE_VERSION: (u8, u8, u8) = (15, 1, 0);
 
 pub mod charwidth {
-    use core::option::Option::{self, None, Some};
-
     /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c` by
     /// consulting a multi-level lookup table.
     /// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
@@ -83,7 +81,7 @@ pub mod charwidth {
         // Extract the 3-9th (0-indexed) least significant bits of `cp`,
         // and use them to index into `leaf_row`.
         let idx_within_leaf = usize::try_from((cp >> 3) & 0x7F).unwrap();
-        let leaf_byte = EMOJI_PRESENTATION_LEAVES[idx_of_leaf][idx_within_leaf];
+        let leaf_byte = EMOJI_PRESENTATION_LEAVES.0[idx_of_leaf][idx_within_leaf];
 
         // Use the 3 LSB of `cp` to index into `leaf_byte`.
         ((leaf_byte >> (cp & 7)) & 1) == 1
@@ -568,9 +566,12 @@ pub mod charwidth {
         0xFF, 0xFF, 0x5F,
     ];
 
+    #[repr(align(128))]
+    struct Align128<T>(T);
+
     /// Array of 1024-bit bitmaps. Index into the correct (obtained from `EMOJI_PRESENTATION_INDEX`)
     /// bitmap with the 10 LSB of your codepoint to get whether it can start an emoji presentation seq.
-    static EMOJI_PRESENTATION_LEAVES: [[u8; 128]; 6] = [
+    static EMOJI_PRESENTATION_LEAVES: Align128<[[u8; 128]; 6]> = Align128([
         [
             0x00, 0x00, 0x00, 0x00, 0x08, 0x04, 0xFF, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x42, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -643,5 +644,5 @@ pub mod charwidth {
             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x0F,
             0x01, 0x00,
         ],
-    ];
+    ]);
 }
