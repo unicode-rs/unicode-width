@@ -434,17 +434,17 @@ def make_variation_sequence_table(
 ) -> "tuple[list[int], list[list[int]]]":
     """Generates 2-level lookup table for whether a codepoint might start an emoji presentation sequence.
     (Characters that are always wide may be excluded.)
-    The first level is a match on all but the 10 LSB, the second level is a 1024-bit bitmap for those 10 LSB."""
+    The first level is a match on all but the 10 LSB, the second level is a 1024-bit bitmap for those 10 LSB.
+    """
 
-    prefixes_dict = defaultdict(list)
+    prefixes_dict = defaultdict(set)
     for cp in seqs:
-        prefixes_dict[cp >> 10].append(cp & 0x3FF)
+        prefixes_dict[cp >> 10].add(cp & 0x3FF)
 
     # We don't strictly need to keep track of characters that are always wide,
     # because being in an emoji variation seq won't affect their width.
     # So store their info only when it wouldn't inflate the size of the tables.
-    keys = list(prefixes_dict.keys())
-    for k in keys:
+    for k in list(prefixes_dict.keys()):
         if all(
             map(
                 lambda cp: width_map[(k << 10) | cp] == EffectiveWidth.WIDE,
@@ -453,7 +453,14 @@ def make_variation_sequence_table(
         ):
             del prefixes_dict[k]
 
-    print(prefixes_dict)
+    indexes = list(prefixes_dict.keys())
+
+    # Similarly, we can spuriously return `true` for always-wide characters
+    # even if not part of a presentation seq; this saves an additional lookup,
+    # so we should do it where there is no size cost.
+    for cp, width in enumerate(width_map):
+        if width == EffectiveWidth.WIDE and (cp >> 10) in indexes:
+            prefixes_dict[cp >> 10].add(cp & 0x3FF)
 
     leaves = []
     for cps in prefixes_dict.values():
@@ -462,7 +469,7 @@ def make_variation_sequence_table(
             idx_in_leaf, bit_shift = divmod(cp, 8)
             leaf[idx_in_leaf] |= 1 << bit_shift
         leaves.append(leaf)
-    return (list(prefixes_dict.keys()), leaves)
+    return (indexes, leaves)
 
 
 def emit_module(
@@ -549,19 +556,19 @@ pub mod charwidth {
         variation_idx, variation_leaves = variation_table
 
         module.write(
-            f"""
+            """
     /// Whether this character forms an [emoji presentation sequence]
     /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
-    /// when followed by `'\\u{{FEOF}}'`.
+    /// when followed by `'\\u{FEOF}'`.
     /// Emoji presentation sequences are considered to have width 2.
-    /// This may spuriously return `false` for all characters that are always wide.
+    /// This may spuriously return `true` or `false` for characters that are always wide.
     #[inline]
-    pub fn starts_emoji_presentation_seq(c: char) -> bool {{
+    pub fn starts_emoji_presentation_seq(c: char) -> bool {
         let cp: u32 = c.into();
 
         // First level of lookup uses all but 10 LSB
         let top_bits = cp >> 10;
-        let idx_of_leaf: usize = match top_bits {{
+        let idx_of_leaf: usize = match top_bits {
 """
         )
 
@@ -569,8 +576,8 @@ pub mod charwidth {
             module.write(f"            {msbs} => {i},\n")
 
         module.write(
-            f"""            _ => return false,
-        }};
+            """            _ => return false,
+        };
 
         // Extract the 3-9th (0-indexed) least significant bits of `cp`,
         // and use them to index into `leaf_row`.
@@ -579,7 +586,7 @@ pub mod charwidth {
 
         // Use the 3 LSB of `cp` to index into `leaf_byte`.
         ((leaf_byte >> (cp & 7)) & 1) == 1
-    }}
+    }
 """
         )
 
@@ -701,10 +708,10 @@ def main(module_filename: str):
     print(f"Emoji presentation index size: {emoji_index_size} bytes")
     total_size += emoji_index_size
     emoji_leaves_size = len(variation_table[1]) * len(variation_table[1][0])
-    print(f"Emoji presentation leaves Size: {emoji_leaves_size} bytes")
+    print(f"Emoji presentation leaves size: {emoji_leaves_size} bytes")
     total_size += emoji_leaves_size
     print("------------------------")
-    print(f"  Total Size: {total_size} bytes")
+    print(f"  Total size: {total_size} bytes")
 
     emit_module(module_filename, version, tables, variation_table)
     print(f'Wrote to "{module_filename}"')
