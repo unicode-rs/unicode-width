@@ -432,22 +432,13 @@ def make_variation_sequence_table(
     seqs: "list[int]",
     width_map,
 ) -> "tuple[list[int], list[list[int]]]":
-    """Generates 2-level look up table for whether a codepoint might start an emoji presentation sequence.
+    """Generates 2-level lookup table for whether a codepoint might start an emoji presentation sequence.
     (Characters that are always wide may be excluded.)
-    First level maps the most significant byte to a 4-bit index (or 0xFF if can't possibly start such a sequence),
-    second level is a bit array (each leaf is 512 bits long)."""
-    # The structure of the table currently relies on this.
-    # It's unlikely to be a problem in the near future
-    # as this is enough to encompass the entire Basic Multilingual Plane and
-    # Supplementary Multilingual Plane.
-    # And the fix is easy if it ever does become a problem:
-    # just check bits 1 more significant for the index,
-    # and use 1024-bit leaves instead of 512-bit.
-    assert seqs[-1] <= 0x1FFFF
+    The first level is a match on all but the 10 LSB, the second level is a 1024-bit bitmap for those 10 LSB."""
 
     prefixes_dict = defaultdict(list)
     for cp in seqs:
-        prefixes_dict[cp >> 9].append(cp & 0x1FF)
+        prefixes_dict[cp >> 10].append(cp & 0x3FF)
 
     # We don't strictly need to keep track of characters that are always wide,
     # because being in an emoji variation seq won't affect their width.
@@ -456,34 +447,22 @@ def make_variation_sequence_table(
     for k in keys:
         if all(
             map(
-                lambda cp: width_map[(k << 9) | cp] == EffectiveWidth.WIDE,
+                lambda cp: width_map[(k << 10) | cp] == EffectiveWidth.WIDE,
                 prefixes_dict[k],
             )
         ):
             del prefixes_dict[k]
 
-    # Another assumption made by the data structure.
-    # Ensures 4 bits are enough to index into subtable
-    assert len(prefixes_dict.keys()) <= 15
-    index_nibbles = [0xF] * 256
-    for idx, k in enumerate(prefixes_dict.keys()):
-        index_nibbles[k] = idx
-
-    index = []
-    for tup in batched(index_nibbles, 2):
-        next = 0
-        for i in range(0, 2):
-            next |= tup[i] << (4 * i)
-        index.append(next)
+    print(prefixes_dict)
 
     leaves = []
     for cps in prefixes_dict.values():
-        leaf = [0] * 64
+        leaf = [0] * 128
         for cp in cps:
             idx_in_leaf, bit_shift = divmod(cp, 8)
             leaf[idx_in_leaf] |= 1 << bit_shift
         leaves.append(leaf)
-    return (index, leaves)
+    return (list(prefixes_dict.keys()), leaves)
 
 
 def emit_module(
@@ -580,29 +559,23 @@ pub mod charwidth {
     pub fn starts_emoji_presentation_seq(c: char) -> bool {{
         let cp: u32 = c.into();
 
-        // The largest codepoint for which this function returns `true`
-        // has 17 significant bits. Extract the most significant 8 of these,
-        // or return `false` if `cp` is outside this range.
-        let Ok(top_byte): Result<u8, _> = (cp >> 9).try_into() else {{
-            return false;
+        // First level of lookup uses all but 10 LSB
+        let top_bits = cp >> 10;
+        let idx_of_leaf: usize = match top_bits {{
+"""
+        )
+
+        for i, msbs in enumerate(variation_idx):
+            module.write(f"            {msbs} => {i},\n")
+
+        module.write(
+            f"""            _ => return false,
         }};
 
-        // Use the byte from above to obtain the corresponding 4-bit index
-        // from the indexes table.
-        let index_byte = EMOJI_PRESENTATION_INDEX[usize::from(top_byte >> 1)];
-        let index_nibble = (index_byte >> (4 * (top_byte & 1))) & 0xF;
-
-        // If the index is the 0xF sentinel, then no codepoint with bits 9-16 (0 indexed)
-        // equal to `top_byte` can change width when part of an emoji presentation seq,
-        // so return `false`.
-        let Some(leaf_row) = EMOJI_PRESENTATION_LEAVES.get(usize::from(index_nibble)) else {{
-            return false;
-        }};
-
-        // Extract the 3-8th (0-indexed) least significant bits of `cp`,
+        // Extract the 3-9th (0-indexed) least significant bits of `cp`,
         // and use them to index into `leaf_row`.
-        let leaf_row_idx = usize::try_from((cp >> 3) & 0x3F).unwrap();
-        let leaf_byte = leaf_row[leaf_row_idx];
+        let idx_within_leaf = usize::try_from((cp >> 3) & 0x7F).unwrap();
+        let leaf_byte = EMOJI_PRESENTATION_LEAVES[idx_of_leaf][idx_within_leaf];
 
         // Use the 3 LSB of `cp` to index into `leaf_byte`.
         ((leaf_byte >> (cp & 7)) & 1) == 1
@@ -663,24 +636,9 @@ pub mod charwidth {
 
         module.write(
             f"""
-    /// An array of 256 4-bit nibbles. Index with bytes 9-16 (where LSB is 0)
-    /// of the char you want to test. 0xF means it's not part of a presentation seq,
-    /// anything else means index into the next table.
-    static EMOJI_PRESENTATION_INDEX: [u8; {len(variation_idx)}] = [
-"""
-        )
-        for row in batched(variation_idx, 15):
-            module.write("       ")
-            for idx in row:
-                module.write(f" 0x{idx:02X},")
-            module.write("\n")
-        module.write("    ];\n")
-
-        module.write(
-            f"""
-    /// Array of 512-bit bitmaps. Index into the correct (obtained from `EMOJI_PRESENTATION_INDEX`)
-    /// bitmap with the 9 LSB of your codepoint to get whether it can start an emoji presentation seq.
-    static EMOJI_PRESENTATION_LEAVES: [[u8; 64]; {len(variation_leaves)}] = [
+    /// Array of 1024-bit bitmaps. Index into the correct (obtained from `EMOJI_PRESENTATION_INDEX`)
+    /// bitmap with the 10 LSB of your codepoint to get whether it can start an emoji presentation seq.
+    static EMOJI_PRESENTATION_LEAVES: [[u8; 128]; {len(variation_leaves)}] = [
 """
         )
         for leaf in variation_leaves:
@@ -739,11 +697,11 @@ def main(module_filename: str):
         size_bytes = len(table.to_bytes())
         print(f"Table {i} size: {size_bytes} bytes")
         total_size += size_bytes
-    emoji_index_size = len(variation_table[0])
-    print(f"Emoji Presentation Index Size: {emoji_index_size} bytes")
+    emoji_index_size = len(variation_table[0]) * 4
+    print(f"Emoji presentation index size: {emoji_index_size} bytes")
     total_size += emoji_index_size
     emoji_leaves_size = len(variation_table[1]) * len(variation_table[1][0])
-    print(f"Emoji Presentation Leaves Size: {emoji_leaves_size} bytes")
+    print(f"Emoji presentation leaves Size: {emoji_leaves_size} bytes")
     total_size += emoji_leaves_size
     print("------------------------")
     print(f"  Total Size: {total_size} bytes")
