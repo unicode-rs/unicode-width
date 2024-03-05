@@ -12,7 +12,7 @@
 use std::{iter, string::String};
 
 #[cfg(feature = "bench")]
-use test::{self, Bencher};
+use test::Bencher;
 
 use super::{UnicodeWidthChar, UnicodeWidthStr};
 
