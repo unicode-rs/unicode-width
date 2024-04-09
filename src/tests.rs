@@ -93,7 +93,7 @@ fn simple_width_match(c: char) -> Option<usize> {
         _ => UnicodeWidthChar::width(c),
     }
 }
-#[cfg(all(feature = "bench", not(feature = "no_std")))]
+#[cfg(feature = "bench")]
 #[bench]
 fn enwik8(b: &mut Bencher) {
     // To benchmark, download & unzip `enwik8` from https://data.deepai.org/enwik8.zip
@@ -101,7 +101,7 @@ fn enwik8(b: &mut Bencher) {
     let string = std::fs::read_to_string(data_path).unwrap_or_default();
     b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
 }
-#[cfg(all(feature = "bench", not(feature = "no_std")))]
+#[cfg(feature = "bench")]
 #[bench]
 fn jawiki(b: &mut Bencher) {
     // To benchmark, download & extract `jawiki-20220501-pages-articles-multistream-index.txt` from
