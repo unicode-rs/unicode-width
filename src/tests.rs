@@ -13,7 +13,7 @@ use super::{UnicodeWidthChar, UnicodeWidthStr};
 #[cfg(feature = "bench")]
 use std::iter;
 #[cfg(feature = "bench")]
-use test::{self, Bencher};
+use test::Bencher;
 
 use std::prelude::v1::*;
 
@@ -140,8 +140,6 @@ fn test_emoji() {
 #[test]
 fn test_char() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('ｈ'), Some(2));
     assert_eq!('ｈ'.width_cjk(), Some(2));
@@ -156,8 +154,6 @@ fn test_char() {
 #[test]
 fn test_char2() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\x00'), Some(0));
     assert_eq!('\x00'.width_cjk(), Some(0));
@@ -187,8 +183,6 @@ fn test_char2() {
 #[test]
 fn unicode_12() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\u{1F971}'), Some(2));
 }
@@ -196,8 +190,6 @@ fn unicode_12() {
 #[test]
 fn test_default_ignorable() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\u{E0000}'), Some(0));
 
@@ -209,8 +201,6 @@ fn test_default_ignorable() {
 #[test]
 fn test_jamo() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\u{1100}'), Some(2));
     assert_eq!(UnicodeWidthChar::width('\u{A97C}'), Some(2));
@@ -225,8 +215,6 @@ fn test_jamo() {
 #[test]
 fn test_prepended_concatenation_marks() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\u{0600}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{070F}'), Some(1));
@@ -237,8 +225,6 @@ fn test_prepended_concatenation_marks() {
 #[test]
 fn test_interlinear_annotation_chars() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\u{FFF9}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{FFFA}'), Some(1));
@@ -248,8 +234,6 @@ fn test_interlinear_annotation_chars() {
 #[test]
 fn test_hieroglyph_format_controls() {
     use super::UnicodeWidthChar;
-    #[cfg(feature = "no_std")]
-    use core::option::Option::{None, Some};
 
     assert_eq!(UnicodeWidthChar::width('\u{13430}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{13436}'), Some(1));
