@@ -150,14 +150,15 @@ def load_zero_widths() -> "list[bool]":
     """Returns a list `l` where `l[c]` is true if codepoint `c` is considered a zero-width
     character. `c` is considered a zero-width character if
 
-    - it is in general categories `Cc`, `Mn`, or `Me` (determined from `UnicodeData.txt`),
+    - it is in general category `Cc`,
+    - or if it has the `Grapheme_Extend` property (determined from `DerivedCoreProperties.txt`),
     - or if it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`),
     - or if it has a `Hangul_Syllable_Type` of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`).
     """
 
     zw_map = []
 
-    # Characters with general category  `Cc`, `Mn`, or `Me` have 0 width...
+    # Characters with general category  `Cc` have 0 width
     with fetch_open("UnicodeData.txt") as categories:
         current = 0
         for line in categories.readlines():
@@ -168,7 +169,7 @@ def load_zero_widths() -> "list[bool]":
                 raw_data[1],
                 raw_data[2],
             ]
-            zero_width = cat_code in ["Cc", "Mn", "Me"]
+            zero_width = cat_code == "Cc"
 
             assert current <= codepoint
             while current <= codepoint:
@@ -188,10 +189,16 @@ def load_zero_widths() -> "list[bool]":
     # `Default_Ignorable_Code_Point`s also have 0 width:
     # https://www.unicode.org/faq/unsup_char.html#3
     # https://www.unicode.org/versions/Unicode15.1.0/ch05.pdf#G40095
+    #
+    # `Grapheme_Extend` includes characters with general category `Mn` or `Me`,
+    # as well as a few `Mc` characters that need to be included so that
+    # canonically equivalent sequences have the same width.
     with fetch_open("DerivedCoreProperties.txt") as properties:
-        single = re.compile(r"^([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point\s+")
+        single = re.compile(
+            r"^([0-9A-F]+)\s+;\s+(?:Default_Ignorable_Code_Point|Grapheme_Extend)\s+"
+        )
         multiple = re.compile(
-            r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+Default_Ignorable_Code_Point\s+"
+            r"^([0-9A-F]+)\.\.([0-9A-F]+)\s+;\s+(?:Default_Ignorable_Code_Point|Grapheme_Extend)\s+"
         )
 
         for line in properties.readlines():
@@ -240,6 +247,19 @@ def load_zero_widths() -> "list[bool]":
     # (which are considered 0-width on their own) to form a composed Hangul syllable with
     # width 2. Therefore, we treat it as having width 2.
     zw_map[0x115F] = False
+
+    # Unicode spec bug: these should be `Grapheme_Cluster_Break=Extend`,
+    # as they canonically decompose to two characters with this property,
+    # but they aren't.
+    zw_map[0x0CC0] = True
+    zw_map[0x0CC7] = True
+    zw_map[0x0CC8] = True
+    zw_map[0x0CCA] = True
+    zw_map[0x0CCB] = True
+    zw_map[0x1B3B] = True
+    zw_map[0x1B3D] = True
+    zw_map[0x1B43] = True
+
     return zw_map
 
 
