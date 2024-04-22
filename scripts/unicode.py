@@ -674,7 +674,9 @@ def main(module_filename: str):
     - The soft hyphen (`U+00AD`) is single-width. (https://archive.is/fCT3c)
     - Hangul jamo medial vowels & final consonants are zero-width.
     - All `Default_Ignorable_Code_Point`s are zero-width, except for U+115F HANGUL CHOSEONG FILLER.
-    - All codepoints in general categories `Cc`, `Mn`, or `Me` are zero-width.
+    - Control characters are zero-width.
+    - `Grapheme_Extend` characters, as well as eight spacing marks that canonically decompose to `Grapheme_Extend` characters,
+      are zero-width.
     - All codepoints with an East Asian Width of `Ambigous` are ambiguous-width.
     - All codepoints with an East Asian Width of `Wide` or `Fullwidth` are double-width.
     - All other codepoints (including unassigned codepoints and codepoints with an East Asian Width
