@@ -30,7 +30,6 @@ unicode-normalization = "0.1.23"
 
 [features]
 default = []
-bench = []
 rustc-dep-of-std = ['std', 'core', 'compiler_builtins']
 
 # Legacy, now a no-op
