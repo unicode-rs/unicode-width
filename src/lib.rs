@@ -54,21 +54,28 @@
 //! 2. [`'\u{00AD}'` SOFT HYPHEN](https://util.unicode.org/UnicodeJsps/character.jsp?a=00AD) has width 1.
 //! 3. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
 //! 4. The following have width 0:
-//!    1. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AHangul_Syllable_Type%253D%252FV%7CT%252F%253A%5D)
+//!    1. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!       with a [`Hangul_Syllable_Type`](https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G45593)
 //!       of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`),
-//!    2. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253ADefault_Ignorable_Code_Point%253DYes%253A%5D)
+//!    2. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!       with the [`Default_Ignorable_Code_Point`](https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095) property,
-//!    3. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AGeneral_Category%253D%252FMn%7CMe%252F%253A%5D)
-//!       with a [`General_Category`](https://www.unicode.org/versions/Unicode15.0.0/ch04.pdf#G124142)
-//!       of `Nonspacing_Mark` (`Mn`) or `Enclosing_Mark` (`Me`), and
-//!    4. [`'\0'` NUL](https://util.unicode.org/UnicodeJsps/character.jsp?a=0000).
-//! 5. The [control characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AGeneral_Category%253DCc%253A%5D)
+//!    3. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
+//!       with the [`Grapheme_Extend`](https://www.unicode.org/versions/Unicode14.0.0/ch03.pdf#G52443) property,
+//!    4. [`'\u{0CC0}'` KANNADA VOWEL SIGN II](https://util.unicode.org/UnicodeJsps/character.jsp?a=0CC0),
+//!       [`'\u{0CC7}'` KANNADA VOWEL SIGN EE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0CC7),
+//!       [`'\u{0CC8}'` KANNADA VOWEL SIGN AI](https://util.unicode.org/UnicodeJsps/character.jsp?a=0CC8),
+//!       [`'\u{0CCA}'` KANNADA VOWEL SIGN O](https://util.unicode.org/UnicodeJsps/character.jsp?a=0CCA),
+//!       [`'\u{0CCB}'` KANNADA VOWEL SIGN OO](https://util.unicode.org/UnicodeJsps/character.jsp?a=0CCB),
+//!       [`'\u{1B3B}'` BALINESE VOWEL SIGN RA REPA TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B3B),
+//!       [`'\u{1B3D}'` BALINESE VOWEL SIGN LA LENGA TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B3D), and
+//!       [`'\u{1B43}'` BALINESE VOWEL SIGN PEPET TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B43),
+//!    5. [`'\0'` NUL](https://util.unicode.org/UnicodeJsps/character.jsp?a=0000).
+//! 5. The [control characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BCc%7D)
 //!    have no defined width, and are considered to have width 0 when contained within a string.
-//! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AEast_Asian_Width%253D%252FF%7CW%252F%253A%5D)
+//! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DW%7D%5Cp%7BEast_Asian_Width%3DF%7D)
 //!    with an [`East_Asian_Width`](https://www.unicode.org/reports/tr11/#ED1) of [`Fullwidth` (`F`)](https://www.unicode.org/reports/tr11/#ED2)
 //!    or [`Wide` (`W`)](https://www.unicode.org/reports/tr11/#ED4) have width 2.
-//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5B%253AEast_Asian_Width%253DA%253A%5D)
+//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
 //!    with an `East_Asian_Width` of [`Ambiguous` (`A`)](https://www.unicode.org/reports/tr11/#ED6)
 //!    have width 2 in an East Asian context, and width 1 otherwise.
 //! 8. All other characters have width 1.
