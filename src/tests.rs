@@ -239,3 +239,36 @@ fn test_hieroglyph_format_controls() {
     assert_eq!(UnicodeWidthChar::width('\u{13436}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{1343C}'), Some(1));
 }
+
+#[test]
+fn test_marks() {
+    use super::UnicodeWidthChar;
+
+    // Nonspacing marks have 0 width
+    assert_eq!(UnicodeWidthChar::width('\u{0301}'), Some(0));
+    // Enclosing marks have 0 width
+    assert_eq!(UnicodeWidthChar::width('\u{20DD}'), Some(0));
+    // Some spacing marks have width 1
+    assert_eq!(UnicodeWidthChar::width('\u{09CB}'), Some(1));
+    // But others have width 0
+    assert_eq!(UnicodeWidthChar::width('\u{09BE}'), Some(0));
+}
+
+#[test]
+fn test_canonical_equivalence() {
+    use super::{UnicodeWidthChar, UnicodeWidthStr};
+
+    for c in '\0'..='\u{10FFFF}' {
+        let mut nfd = String::new();
+        unicode_normalization::char::decompose_canonical(c, |d| nfd.push(d));
+        assert_eq!(
+            c.width().unwrap_or(0),
+            nfd.width(),
+            "U+{:04X} '{c}' → U+{:04X?} \"{nfd}\"",
+            u32::from(c),
+            nfd.chars().map(u32::from).collect::<Vec<_>>()
+        );
+        // this doesn't hold
+        //assert_eq!(c.width_cjk().unwrap_or(0), nfd.width_cjk(), "{c}, {nfd}");
+    }
+}
