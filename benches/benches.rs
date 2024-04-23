@@ -104,3 +104,11 @@ fn jawiki(b: &mut Bencher) {
     let string = std::fs::read_to_string(data_path).unwrap_or_default();
     b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
 }
+
+#[bench]
+fn emoji(b: &mut Bencher) {
+    // To benchmark, download emoji-style.txt from https://www.unicode.org/emoji/charts/emoji-style.txt
+    let data_path = "bench_data/emoji-style.txt";
+    let string = std::fs::read_to_string(data_path).unwrap_or_default();
+    b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
+}
