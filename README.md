@@ -1,17 +1,17 @@
-# unicode-width
+# `unicode-width`
 
-Determine displayed width of `char` and `str` types according to
-[Unicode Standard Annex #11][UAX11] rules.
+[![Build status](https://github.com/unicode-rs/unicode-width/actions/workflows/rust.yml/badge.svg)](https://travis-ci.org/unicode-rs/unicode-width)
+[![crates.io version](https://img.shields.io/crates/v/unicode-width)](https://crates.io/crates/unicode-width)
+[![Docs status](https://img.shields.io/docsrs/unicode-width)](https://docs.rs/unicode-width/)
+
+Determine displayed width of `char` and `str` types according to [Unicode Standard Annex #11][UAX11],
+other portions of the Unicode standard, and common implementations of POSIX [`wcwidth()`](https://pubs.opengroup.org/onlinepubs/9699919799/).
+
+This crate is `#![no_std]`.
 
 [UAX11]: http://www.unicode.org/reports/tr11/
 
-[![Build Status](https://travis-ci.org/unicode-rs/unicode-width.svg)](https://travis-ci.org/unicode-rs/unicode-width)
-
-[Documentation](https://unicode-rs.github.io/unicode-width/unicode_width/index.html)
-
 ```rust
-extern crate unicode_width;
-
 use unicode_width::UnicodeWidthStr;
 
 fn main() {
@@ -45,11 +45,6 @@ and nonstandard [Korean jamo](https://unicode.org/glossary/#jamo) sequences may
 be rendered with a different width than what this crate says. (This is not an
 exhaustive list.)
 
-## features
-
-unicode-width does not depend on libstd, so it can be used in crates
-with the `#![no_std]` attribute.
-
 ## crates.io
 
 You can use this package in your project by adding the following
@@ -57,5 +52,5 @@ to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-unicode-width = "0.1.7"
+unicode-width = "0.1.11"
 ```
