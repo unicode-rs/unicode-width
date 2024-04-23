@@ -9,7 +9,7 @@ authors = [
 
 homepage = "https://github.com/unicode-rs/unicode-width"
 repository = "https://github.com/unicode-rs/unicode-width"
-license = "MIT/Apache-2.0"
+license = "MIT OR Apache-2.0"
 categories = [
     "command-line-interface",
     "internationalization",
