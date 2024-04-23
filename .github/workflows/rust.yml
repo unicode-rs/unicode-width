@@ -7,7 +7,11 @@ on:
     branches: [ "master" ]
 
 env:
+  CARGO_INCREMENTAL: 0
   CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  RUSTFLAGS: -D warnings
+  RUSTDOCFLAGS: -D warnings
 
 jobs:
   build:
@@ -18,6 +22,12 @@ jobs:
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+    - name: Build docs
+      run: cargo doc
+    - name: Check formatting
+      run: cargo fmt --check
+    - name: Check clippy
+      run: cargo clippy --lib --tests
   regen:
     runs-on: ubuntu-latest
     steps:
