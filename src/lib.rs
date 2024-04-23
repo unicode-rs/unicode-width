@@ -33,9 +33,11 @@
 //! This crate currently uses the following rules to determine the width of a
 //! character or string, in order of decreasing precedence. These may be tweaked in the future.
 //!
-//! 1. [`'\u{00AD}'` SOFT HYPHEN](https://util.unicode.org/UnicodeJsps/character.jsp?a=00AD) has width 1.
-//! 2. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
-//! 3. The following have width 0:
+//! 1. [Emoji presentation sequences](https://unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+//!    have width 2. (The width of a string may therefore differ from the sum of the widths of its characters.)
+//! 2. [`'\u{00AD}'` SOFT HYPHEN](https://util.unicode.org/UnicodeJsps/character.jsp?a=00AD) has width 1.
+//! 3. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
+//! 4. The following have width 0:
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!       with the [`Default_Ignorable_Code_Point`](https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095) property.
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
@@ -53,15 +55,15 @@
 //!       with a [`Hangul_Syllable_Type`](https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G45593)
 //!       of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
 //!    - [`'\0'` NUL](https://util.unicode.org/UnicodeJsps/character.jsp?a=0000).
-//! 4. The [control characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BCc%7D)
+//! 5. The [control characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BCc%7D)
 //!    have no defined width, and are ignored when determining the width of a string.
-//! 5. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
+//! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!    with an [`East_Asian_Width`] of [`Fullwidth` (`F`)](https://www.unicode.org/reports/tr11/#ED2)
 //!    or [`Wide` (`W`)](https://www.unicode.org/reports/tr11/#ED4) have width 2.
-//! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
+//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
 //!    with an [`East_Asian_Width`] of [`Ambiguous` (`A`)](https://www.unicode.org/reports/tr11/#ED6)
 //!    have width 2 in an East Asian context, and width 1 otherwise.
-//! 7. All other characters have width 1.
+//! 8. All other characters have width 1.
 //!
 //! [`East_Asian_Width`]: https://www.unicode.org/reports/tr11/#ED1
 //! [`Grapheme_Extend`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G52443
@@ -122,7 +124,9 @@ impl UnicodeWidthChar for char {
 pub trait UnicodeWidthStr {
     /// Returns the string's displayed width in columns.
     ///
-    /// Control characters are treated as having zero width.
+    /// Control characters are treated as having zero width,
+    /// and [emoji presentation sequences](https://unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// are assigned width 2.
     ///
     /// This function treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
@@ -132,7 +136,9 @@ pub trait UnicodeWidthStr {
 
     /// Returns the string's displayed width in columns.
     ///
-    /// Control characters are treated as having zero width.
+    /// Control characters are treated as having zero width,
+    /// and [emoji presentation sequences](https://unicode.org/reports/tr51/#def_emoji_presentation_sequence)
+    /// are assigned width 2.
     ///
     /// This function treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
@@ -144,11 +150,28 @@ pub trait UnicodeWidthStr {
 impl UnicodeWidthStr for str {
     #[inline]
     fn width(&self) -> usize {
-        self.chars().map(|c| cw::width(c, false).unwrap_or(0)).sum()
+        str_width(self, false)
     }
 
     #[inline]
     fn width_cjk(&self) -> usize {
-        self.chars().map(|c| cw::width(c, true).unwrap_or(0)).sum()
+        str_width(self, true)
     }
+}
+
+fn str_width(s: &str, is_cjk: bool) -> usize {
+    s.chars()
+        .rfold((0, false), |(sum, was_fe0f), c| {
+            if c == '\u{FE0F}' {
+                (sum, true)
+            } else {
+                let add = if was_fe0f && cw::starts_emoji_presentation_seq(c) {
+                    2
+                } else {
+                    cw::width(c, is_cjk).unwrap_or(0)
+                };
+                (sum + add, false)
+            }
+        })
+        .0
 }
