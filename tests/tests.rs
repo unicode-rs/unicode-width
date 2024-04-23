@@ -8,112 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(feature = "bench")]
-use super::{UnicodeWidthChar, UnicodeWidthStr};
-#[cfg(feature = "bench")]
-use std::iter;
-#[cfg(feature = "bench")]
-use test::Bencher;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
-use std::prelude::v1::*;
-
-#[cfg(feature = "bench")]
-#[bench]
-fn cargo(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
-
-    b.iter(|| {
-        for c in string.chars() {
-            test::black_box(UnicodeWidthChar::width(c));
-        }
-    });
-}
-
-#[cfg(feature = "bench")]
-#[bench]
-#[allow(deprecated)]
-fn stdlib(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
-
-    b.iter(|| {
-        for c in string.chars() {
-            test::black_box(c.width());
-        }
-    });
-}
-
-#[cfg(feature = "bench")]
-#[bench]
-fn simple_if(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
-
-    b.iter(|| {
-        for c in string.chars() {
-            test::black_box(simple_width_if(c));
-        }
-    });
-}
-
-#[cfg(feature = "bench")]
-#[bench]
-fn simple_match(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
-
-    b.iter(|| {
-        for c in string.chars() {
-            test::black_box(simple_width_match(c));
-        }
-    });
-}
-
-#[cfg(feature = "bench")]
-#[inline]
-fn simple_width_if(c: char) -> Option<usize> {
-    let cu = c as u32;
-    if cu < 127 {
-        if cu > 31 {
-            Some(1)
-        } else if cu == 0 {
-            Some(0)
-        } else {
-            None
-        }
-    } else {
-        UnicodeWidthChar::width(c)
-    }
-}
-
-#[cfg(feature = "bench")]
-#[inline]
-fn simple_width_match(c: char) -> Option<usize> {
-    match c as u32 {
-        cu if cu == 0 => Some(0),
-        cu if cu < 0x20 => None,
-        cu if cu < 0x7f => Some(1),
-        _ => UnicodeWidthChar::width(c),
-    }
-}
-#[cfg(feature = "bench")]
-#[bench]
-fn enwik8(b: &mut Bencher) {
-    // To benchmark, download & unzip `enwik8` from https://data.deepai.org/enwik8.zip
-    let data_path = "bench_data/enwik8";
-    let string = std::fs::read_to_string(data_path).unwrap_or_default();
-    b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
-}
-#[cfg(feature = "bench")]
-#[bench]
-fn jawiki(b: &mut Bencher) {
-    // To benchmark, download & extract `jawiki-20220501-pages-articles-multistream-index.txt` from
-    // https://dumps.wikimedia.org/jawiki/20220501/jawiki-20220501-pages-articles-multistream-index.txt.bz2
-    let data_path = "bench_data/jawiki-20220501-pages-articles-multistream-index.txt";
-    let string = std::fs::read_to_string(data_path).unwrap_or_default();
-    b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
-}
 #[test]
 fn test_str() {
-    use super::UnicodeWidthStr;
-
     assert_eq!(UnicodeWidthStr::width("ｈｅｌｌｏ"), 10);
     assert_eq!("ｈｅｌｌｏ".width_cjk(), 10);
     assert_eq!(UnicodeWidthStr::width("\0\0\0\x01\x01"), 0);
@@ -130,8 +28,6 @@ fn test_str() {
 #[test]
 fn test_emoji() {
     // Example from the README.
-    use super::UnicodeWidthStr;
-
     assert_eq!(UnicodeWidthStr::width("👩"), 2); // Woman
     assert_eq!(UnicodeWidthStr::width("🔬"), 2); // Microscope
     assert_eq!(UnicodeWidthStr::width("👩‍🔬"), 4); // Woman scientist
@@ -139,8 +35,6 @@ fn test_emoji() {
 
 #[test]
 fn test_char() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('ｈ'), Some(2));
     assert_eq!('ｈ'.width_cjk(), Some(2));
     assert_eq!(UnicodeWidthChar::width('\x00'), Some(0));
@@ -153,8 +47,6 @@ fn test_char() {
 
 #[test]
 fn test_char2() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\x00'), Some(0));
     assert_eq!('\x00'.width_cjk(), Some(0));
 
@@ -182,15 +74,11 @@ fn test_char2() {
 
 #[test]
 fn unicode_12() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{1F971}'), Some(2));
 }
 
 #[test]
 fn test_default_ignorable() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{E0000}'), Some(0));
 
     assert_eq!(UnicodeWidthChar::width('\u{1160}'), Some(0));
@@ -200,8 +88,6 @@ fn test_default_ignorable() {
 
 #[test]
 fn test_jamo() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{1100}'), Some(2));
     assert_eq!(UnicodeWidthChar::width('\u{A97C}'), Some(2));
     // Special case: U+115F HANGUL CHOSEONG FILLER
@@ -214,8 +100,6 @@ fn test_jamo() {
 
 #[test]
 fn test_prepended_concatenation_marks() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{0600}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{070F}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{08E2}'), Some(1));
@@ -224,8 +108,6 @@ fn test_prepended_concatenation_marks() {
 
 #[test]
 fn test_interlinear_annotation_chars() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{FFF9}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{FFFA}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{FFFB}'), Some(1));
@@ -233,8 +115,6 @@ fn test_interlinear_annotation_chars() {
 
 #[test]
 fn test_hieroglyph_format_controls() {
-    use super::UnicodeWidthChar;
-
     assert_eq!(UnicodeWidthChar::width('\u{13430}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{13436}'), Some(1));
     assert_eq!(UnicodeWidthChar::width('\u{1343C}'), Some(1));
@@ -242,8 +122,6 @@ fn test_hieroglyph_format_controls() {
 
 #[test]
 fn test_marks() {
-    use super::UnicodeWidthChar;
-
     // Nonspacing marks have 0 width
     assert_eq!(UnicodeWidthChar::width('\u{0301}'), Some(0));
     // Enclosing marks have 0 width
@@ -256,8 +134,6 @@ fn test_marks() {
 
 #[test]
 fn test_canonical_equivalence() {
-    use super::{UnicodeWidthChar, UnicodeWidthStr};
-
     for c in '\0'..='\u{10FFFF}' {
         let mut nfd = String::new();
         unicode_normalization::char::decompose_canonical(c, |d| nfd.push(d));

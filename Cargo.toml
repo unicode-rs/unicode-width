@@ -2,7 +2,10 @@
 
 name = "unicode-width"
 version = "0.1.11"
-authors = ["kwantam <kwantam@gmail.com>", "Manish Goregaokar <manishsmail@gmail.com>"]
+authors = [
+    "kwantam <kwantam@gmail.com>",
+    "Manish Goregaokar <manishsmail@gmail.com>",
+]
 
 homepage = "https://github.com/unicode-rs/unicode-width"
 repository = "https://github.com/unicode-rs/unicode-width"
@@ -14,8 +17,9 @@ description = """
 Determine displayed width of `char` and `str` types
 according to Unicode Standard Annex #11 rules.
 """
+edition = "2021"
 
-exclude = [ "target/*", "Cargo.lock" ]
+exclude = ["target/*", "Cargo.lock"]
 
 [dependencies]
 std = { version = "1.0", package = "rustc-std-workspace-std", optional = true }
@@ -27,7 +31,6 @@ unicode-normalization = "0.1.23"
 
 [features]
 default = []
-bench = []
 rustc-dep-of-std = ['std', 'core', 'compiler_builtins']
 
 # Legacy, now a no-op
