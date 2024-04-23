@@ -11,9 +11,12 @@
 # except according to those terms.
 
 # This script uses the following Unicode tables:
+#
+# - DerivedCoreProperties.txt
 # - EastAsianWidth.txt
+# - HangulSyllableType.txt
+# - PropList.txt
 # - ReadMe.txt
-# - UnicodeData.txt
 #
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the generated module into git.
@@ -150,41 +153,20 @@ def load_zero_widths() -> "list[bool]":
     """Returns a list `l` where `l[c]` is true if codepoint `c` is considered a zero-width
     character. `c` is considered a zero-width character if
 
-    - it is in general category `Cc`,
-    - or if it has the `Grapheme_Extend` property (determined from `DerivedCoreProperties.txt`),
+    - it is a control character,
     - or if it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`),
+    - or if it has the `Grapheme_Extend` property (determined from `DerivedCoreProperties.txt`),
+    - or if it one of eight characters that should be `Grapheme_Extend` but aren't due to a Unicode spec bug,
     - or if it has a `Hangul_Syllable_Type` of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`).
     """
 
-    zw_map = []
+    zw_map = [False] * NUM_CODEPOINTS
 
-    # Characters with general category  `Cc` have 0 width
-    with fetch_open("UnicodeData.txt") as categories:
-        current = 0
-        for line in categories.readlines():
-            if len(raw_data := line.split(";")) != 15:
-                continue
-            [codepoint, name, cat_code] = [
-                int(raw_data[0], 16),
-                raw_data[1],
-                raw_data[2],
-            ]
-            zero_width = cat_code == "Cc"
-
-            assert current <= codepoint
-            while current <= codepoint:
-                if name.endswith(", Last>") or current == codepoint:
-                    # if name ends with Last, we backfill the width value to all codepoints since
-                    # the previous codepoint (aka the start of the range)
-                    zw_map.append(zero_width)
-                else:
-                    # unassigned characters are implicitly given Neutral width, which is nonzero
-                    zw_map.append(False)
-                current += 1
-
-        while len(zw_map) < NUM_CODEPOINTS:
-            # Catch any leftover codepoints. They must be unassigned (so nonzero width)
-            zw_map.append(False)
+    # Control characters have width 0
+    for c in range(0x00, 0x20):
+        zw_map[c] = True
+    for c in range(0x7F, 0xA0):
+        zw_map[c] = True
 
     # `Default_Ignorable_Code_Point`s also have 0 width:
     # https://www.unicode.org/faq/unsup_char.html#3
@@ -213,6 +195,12 @@ def load_zero_widths() -> "list[bool]":
             high = int(raw_data[1], 16)
             for cp in range(low, high + 1):
                 zw_map[cp] = True
+
+    # Unicode spec bug: these should be `Grapheme_Cluster_Break=Extend`,
+    # as they canonically decompose to two characters with this property,
+    # but they aren't.
+    for c in [0x0CC0, 0x0CC7, 0x0CC8, 0x0CCA, 0x0CCB, 0x1B3B, 0x1B3D, 0x1B43]:
+        zw_map[c] = True
 
     # Treat `Hangul_Syllable_Type`s of `Vowel_Jamo` and `Trailing_Jamo`
     # as zero-width. This matches the behavior of glibc `wcwidth`.
@@ -247,18 +235,6 @@ def load_zero_widths() -> "list[bool]":
     # (which are considered 0-width on their own) to form a composed Hangul syllable with
     # width 2. Therefore, we treat it as having width 2.
     zw_map[0x115F] = False
-
-    # Unicode spec bug: these should be `Grapheme_Cluster_Break=Extend`,
-    # as they canonically decompose to two characters with this property,
-    # but they aren't.
-    zw_map[0x0CC0] = True
-    zw_map[0x0CC7] = True
-    zw_map[0x0CC8] = True
-    zw_map[0x0CCA] = True
-    zw_map[0x0CCB] = True
-    zw_map[0x1B3B] = True
-    zw_map[0x1B3D] = True
-    zw_map[0x1B43] = True
 
     return zw_map
 
@@ -297,7 +273,7 @@ class Bucket:
         result.sort()
         return result
 
-    def width(self) -> "EffectiveWidth":
+    def width(self) -> "EffectiveWidth | None":
         """If all codepoints in this bucket have the same width, return that width; otherwise,
         return `None`."""
         if len(self.widths) == 0:
@@ -542,13 +518,16 @@ def main(module_filename: str):
     lookup table for character width, and write a Rust module utilizing that table to
     `module_filename`.
 
-    We obey the following rules in decreasing order of importance:
+    We obey the following rules, in decreasing order of importance:
+
     - The soft hyphen (`U+00AD`) is single-width. (https://archive.is/fCT3c)
     - Hangul jamo medial vowels & final consonants are zero-width.
-    - All `Default_Ignorable_Code_Point`s are zero-width, except for U+115F HANGUL CHOSEONG FILLER.
-    - All codepoints in general categories `Cc`, `Mn`, or `Me` are zero-width.
-    - All codepoints with an East Asian Width of `Ambigous` are ambiguous-width.
-    - All codepoints with an East Asian Width of `Wide` or `Fullwidth` are double-width.
+    - `Default_Ignorable_Code_Point`s are zero-width, except for U+115F HANGUL CHOSEONG FILLER.
+    - Control characters are zero-width.
+    - `Grapheme_Extend` chracters, as well as eight characters that NFD decompose to `Grapheme_Extend` chracters,
+      are zero-width.
+    - Codepoints with an East Asian Width of `Ambigous` are ambiguous-width.
+    - Codepoints with an East Asian Width of `Wide` or `Fullwidth` are double-width.
     - All other codepoints (including unassigned codepoints and codepoints with an East Asian Width
       of `Neutral`, `Narrow`, or `Halfwidth`) are single-width.
 
