@@ -27,8 +27,12 @@ import math
 import os
 import re
 import sys
+import urllib.request
 from collections import defaultdict
 from itertools import batched
+
+UNICODE_VERSION = "15.1.0"
+"""The version of the Unicode data files to download."""
 
 NUM_CODEPOINTS = 0x110000
 """An upper bound for which `range(0, NUM_CODEPOINTS)` contains Unicode's codespace."""
@@ -70,11 +74,13 @@ BitPos = int
 
 def fetch_open(filename: str):
     """Opens `filename` and return its corresponding file object. If `filename` isn't on disk,
-    fetches it from `https://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
+    fetches it from `https://www.unicode.org/Public/`. Exits with code 1 on failure.
     """
     basename = os.path.basename(filename)
     if not os.path.exists(basename):
-        os.system(f"curl -O https://www.unicode.org/Public/UNIDATA/{filename}")
+        urllib.request.urlretrieve(
+            f"https://www.unicode.org/Public/{UNICODE_VERSION}/ucd/{filename}", basename
+        )
     try:
         return open(basename, encoding="utf-8")
     except OSError:
