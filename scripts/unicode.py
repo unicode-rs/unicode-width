@@ -70,11 +70,11 @@ BitPos = int
 
 def fetch_open(filename: str):
     """Opens `filename` and return its corresponding file object. If `filename` isn't on disk,
-    fetches it from `http://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
+    fetches it from `https://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
     """
     basename = os.path.basename(filename)
     if not os.path.exists(basename):
-        os.system(f"curl -O http://www.unicode.org/Public/UNIDATA/{filename}")
+        os.system(f"curl -O https://www.unicode.org/Public/UNIDATA/{filename}")
     try:
         return open(basename, encoding="utf-8")
     except OSError:
@@ -676,6 +676,9 @@ def main(module_filename: str):
 
     emoji_variations = load_variation_sequences()
     variation_table = make_variation_sequence_table(emoji_variations, width_map)
+
+    # Download normalization test file for use by tests
+    fetch_open("NormalizationTest.txt")
 
     print("------------------------")
     total_size = 0

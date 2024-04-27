@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+};
+
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[test]
@@ -146,6 +151,38 @@ fn test_canonical_equivalence() {
         );
         // this doesn't hold
         //assert_eq!(c.width_cjk().unwrap_or(0), nfd.width_cjk(), "{c}, {nfd}");
+    }
+}
+
+/// Requires `NormalizationTest.txt` to be present in the `scripts/` directory.
+/// Run the `unicode.py` script to download it.
+#[test]
+fn test_canonical_equivalence_2() {
+    let norm_file = BufReader::new(
+        File::open("scripts/NormalizationTest.txt")
+            .expect("run `unicode.py` first to download `NormalizationTest.txt`"),
+    );
+    for line in norm_file.lines() {
+        let line = line.unwrap();
+        if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
+            continue;
+        }
+        let (nfc, postnfc) = line.split_once(';').unwrap();
+        let (nfd, _) = postnfc.split_once(';').unwrap();
+        let nfc: String = nfc
+            .split(' ')
+            .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
+            .collect();
+        let nfd: String = nfd
+            .split(' ')
+            .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
+            .collect();
+
+        assert_eq!(
+            nfc.width(),
+            nfd.width(),
+            "width of {nfc:?} differs from {nfd:?}"
+        );
     }
 }
 
