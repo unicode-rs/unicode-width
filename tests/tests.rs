@@ -137,27 +137,10 @@ fn test_marks() {
     assert_eq!(UnicodeWidthChar::width('\u{09BE}'), Some(0));
 }
 
-#[test]
-fn test_canonical_equivalence() {
-    for c in '\0'..='\u{10FFFF}' {
-        let mut nfd = String::new();
-        unicode_normalization::char::decompose_canonical(c, |d| nfd.push(d));
-        assert_eq!(
-            c.width().unwrap_or(0),
-            nfd.width(),
-            "U+{:04X} '{c}' → U+{:04X?} \"{nfd}\"",
-            u32::from(c),
-            nfd.chars().map(u32::from).collect::<Vec<_>>()
-        );
-        // this doesn't hold
-        //assert_eq!(c.width_cjk().unwrap_or(0), nfd.width_cjk(), "{c}, {nfd}");
-    }
-}
-
 /// Requires `NormalizationTest.txt` to be present in the `scripts/` directory.
 /// Run the `unicode.py` script to download it.
 #[test]
-fn test_canonical_equivalence_2() {
+fn test_canonical_equivalence() {
     let norm_file = BufReader::new(
         File::open("scripts/NormalizationTest.txt")
             .expect("run `unicode.py` first to download `NormalizationTest.txt`"),
