@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+};
+
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[test]
@@ -134,18 +139,46 @@ fn test_marks() {
 
 #[test]
 fn test_canonical_equivalence() {
-    for c in '\0'..='\u{10FFFF}' {
-        let mut nfd = String::new();
-        unicode_normalization::char::decompose_canonical(c, |d| nfd.push(d));
+    let norm_file = BufReader::new(
+        File::open("tests/NormalizationTest.txt")
+            .expect("run `unicode.py` first to download `NormalizationTest.txt`"),
+    );
+    for line in norm_file.lines() {
+        let line = line.unwrap();
+        if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
+            continue;
+        }
+
+        let mut forms_iter = line.split(';').map(|substr| -> String {
+            substr
+                .split(' ')
+                .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
+                .collect()
+        });
+
+        let orig = forms_iter.next().unwrap();
+        let nfc = forms_iter.next().unwrap();
+        let nfd = forms_iter.next().unwrap();
+        let nfkc = forms_iter.next().unwrap();
+        let nfkd = forms_iter.next().unwrap();
+
         assert_eq!(
-            c.width().unwrap_or(0),
-            nfd.width(),
-            "U+{:04X} '{c}' → U+{:04X?} \"{nfd}\"",
-            u32::from(c),
-            nfd.chars().map(u32::from).collect::<Vec<_>>()
+            orig.width(),
+            nfc.width(),
+            "width of X == {orig:?} differs from toNFC(X) == {nfc:?}"
         );
-        // this doesn't hold
-        //assert_eq!(c.width_cjk().unwrap_or(0), nfd.width_cjk(), "{c}, {nfd}");
+
+        assert_eq!(
+            orig.width(),
+            nfd.width(),
+            "width of X == {orig:?} differs from toNFD(X) == {nfd:?}"
+        );
+
+        assert_eq!(
+            nfkc.width(),
+            nfkd.width(),
+            "width of toNFKC(X) == {nfkc:?} differs from toNFKD(X) == {nfkd:?}"
+        );
     }
 }
 

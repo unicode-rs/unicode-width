@@ -27,8 +27,12 @@ import math
 import os
 import re
 import sys
+import urllib.request
 from collections import defaultdict
 from itertools import batched
+
+UNICODE_VERSION = "15.1.0"
+"""The version of the Unicode data files to download."""
 
 NUM_CODEPOINTS = 0x110000
 """An upper bound for which `range(0, NUM_CODEPOINTS)` contains Unicode's codespace."""
@@ -61,24 +65,28 @@ codepoint and those tables offsets are stored according to `offset_type`.
 
 If this is edited, you must ensure that `emit_module` reflects your changes."""
 
-MODULE_FILENAME = "tables.rs"
-"""The filename of the emitted Rust module (will be created in the working directory)"""
+MODULE_PATH = "../src/tables.rs"
+"""The path of the emitted Rust module (relative to the working directory)"""
 
 Codepoint = int
 BitPos = int
 
 
-def fetch_open(filename: str):
+def fetch_open(filename: str, local_prefix: str = ""):
     """Opens `filename` and return its corresponding file object. If `filename` isn't on disk,
-    fetches it from `http://www.unicode.org/Public/UNIDATA/`. Exits with code 1 on failure.
+    fetches it from `https://www.unicode.org/Public/`. Exits with code 1 on failure.
     """
     basename = os.path.basename(filename)
-    if not os.path.exists(basename):
-        os.system(f"curl -O http://www.unicode.org/Public/UNIDATA/{filename}")
+    localname = os.path.join(local_prefix, basename)
+    if not os.path.exists(localname):
+        urllib.request.urlretrieve(
+            f"https://www.unicode.org/Public/{UNICODE_VERSION}/ucd/{filename}",
+            localname,
+        )
     try:
-        return open(basename, encoding="utf-8")
+        return open(localname, encoding="utf-8")
     except OSError:
-        sys.stderr.write(f"cannot load {basename}")
+        sys.stderr.write(f"cannot load {localname}")
         sys.exit(1)
 
 
@@ -637,7 +645,7 @@ pub mod charwidth {
         module.write("}\n")
 
 
-def main(module_filename: str):
+def main(module_path: str):
     """Obtain character data from the latest version of Unicode, transform it into a multi-level
     lookup table for character width, and write a Rust module utilizing that table to
     `module_filename`.
@@ -677,6 +685,9 @@ def main(module_filename: str):
     emoji_variations = load_variation_sequences()
     variation_table = make_variation_sequence_table(emoji_variations, width_map)
 
+    # Download normalization test file for use by tests
+    fetch_open("NormalizationTest.txt", "../tests/")
+
     print("------------------------")
     total_size = 0
     for i, table in enumerate(tables):
@@ -692,9 +703,9 @@ def main(module_filename: str):
     print("------------------------")
     print(f"  Total size: {total_size} bytes")
 
-    emit_module(module_filename, version, tables, variation_table)
-    print(f'Wrote to "{module_filename}"')
+    emit_module(module_path, version, tables, variation_table)
+    print(f'Wrote to "{module_path}"')
 
 
 if __name__ == "__main__":
-    main(MODULE_FILENAME)
+    main(MODULE_PATH)
