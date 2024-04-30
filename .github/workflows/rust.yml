@@ -39,4 +39,4 @@ jobs:
     - name: Regen
       run: rm tests/NormalizationTest.txt && cd scripts && python3 unicode.py
     - name: Diff
-      run: git diff-index --quiet HEAD --
+      run: git update-index --refresh && git diff-index --quiet HEAD --
