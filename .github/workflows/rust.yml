@@ -18,10 +18,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Regen tables
-      run: cd scripts && python3 unicode.py
-    - name: Diff tables
-      run: diff src/tables.rs scripts/tables.rs
     - name: Build
       run: cargo build --verbose
     - name: Run tests

@@ -84,9 +84,9 @@ def fetch_open(filename: str, local_prefix: str = ""):
             localname,
         )
     try:
-        return open(basename, encoding="utf-8")
+        return open(localname, encoding="utf-8")
     except OSError:
-        sys.stderr.write(f"cannot load {basename}")
+        sys.stderr.write(f"cannot load {localname}")
         sys.exit(1)
 
 
