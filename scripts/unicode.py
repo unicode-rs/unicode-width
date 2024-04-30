@@ -65,8 +65,8 @@ codepoint and those tables offsets are stored according to `offset_type`.
 
 If this is edited, you must ensure that `emit_module` reflects your changes."""
 
-MODULE_FILENAME = "tables.rs"
-"""The filename of the emitted Rust module (will be created in the working directory)"""
+MODULE_PATH = "../src/tables.rs"
+"""The path of the emitted Rust module (relative to the working directory)"""
 
 Codepoint = int
 BitPos = int
@@ -645,7 +645,7 @@ pub mod charwidth {
         module.write("}\n")
 
 
-def main(module_filename: str):
+def main(module_path: str):
     """Obtain character data from the latest version of Unicode, transform it into a multi-level
     lookup table for character width, and write a Rust module utilizing that table to
     `module_filename`.
@@ -703,9 +703,9 @@ def main(module_filename: str):
     print("------------------------")
     print(f"  Total size: {total_size} bytes")
 
-    emit_module(module_filename, version, tables, variation_table)
-    print(f'Wrote to "{module_filename}"')
+    emit_module(module_path, version, tables, variation_table)
+    print(f'Wrote to "{module_path}"')
 
 
 if __name__ == "__main__":
-    main(MODULE_FILENAME)
+    main(MODULE_PATH)
