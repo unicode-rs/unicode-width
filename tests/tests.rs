@@ -148,21 +148,36 @@ fn test_canonical_equivalence() {
         if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
             continue;
         }
-        let (nfc, postnfc) = line.split_once(';').unwrap();
-        let (nfd, _) = postnfc.split_once(';').unwrap();
-        let nfc: String = nfc
-            .split(' ')
-            .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
-            .collect();
-        let nfd: String = nfd
-            .split(' ')
-            .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
-            .collect();
+
+        let mut forms_iter = line.split(';').map(|substr| -> String {
+            substr
+                .split(' ')
+                .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
+                .collect()
+        });
+
+        let orig = forms_iter.next().unwrap();
+        let nfc = forms_iter.next().unwrap();
+        let nfd = forms_iter.next().unwrap();
+        let nfkc = forms_iter.next().unwrap();
+        let nfkd = forms_iter.next().unwrap();
 
         assert_eq!(
+            orig.width(),
             nfc.width(),
+            "width of X == {orig:?} differs from toNFC(X) == {nfc:?}"
+        );
+
+        assert_eq!(
+            orig.width(),
             nfd.width(),
-            "width of {nfc:?} differs from {nfd:?}"
+            "width of X == {orig:?} differs from toNFD(X) == {nfd:?}"
+        );
+
+        assert_eq!(
+            nfkc.width(),
+            nfkd.width(),
+            "width of toNFKC(X) == {nfkc:?} differs from toNFKD(X) == {nfkd:?}"
         );
     }
 }
