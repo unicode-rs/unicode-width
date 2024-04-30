@@ -72,14 +72,16 @@ Codepoint = int
 BitPos = int
 
 
-def fetch_open(filename: str):
+def fetch_open(filename: str, local_prefix: str = ""):
     """Opens `filename` and return its corresponding file object. If `filename` isn't on disk,
     fetches it from `https://www.unicode.org/Public/`. Exits with code 1 on failure.
     """
     basename = os.path.basename(filename)
-    if not os.path.exists(basename):
+    localname = os.path.join(local_prefix, basename)
+    if not os.path.exists(localname):
         urllib.request.urlretrieve(
-            f"https://www.unicode.org/Public/{UNICODE_VERSION}/ucd/{filename}", basename
+            f"https://www.unicode.org/Public/{UNICODE_VERSION}/ucd/{filename}",
+            localname,
         )
     try:
         return open(basename, encoding="utf-8")
@@ -684,7 +686,7 @@ def main(module_filename: str):
     variation_table = make_variation_sequence_table(emoji_variations, width_map)
 
     # Download normalization test file for use by tests
-    fetch_open("NormalizationTest.txt")
+    fetch_open("NormalizationTest.txt", "../tests/")
 
     print("------------------------")
     total_size = 0

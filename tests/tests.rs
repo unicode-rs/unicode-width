@@ -137,12 +137,10 @@ fn test_marks() {
     assert_eq!(UnicodeWidthChar::width('\u{09BE}'), Some(0));
 }
 
-/// Requires `NormalizationTest.txt` to be present in the `scripts/` directory.
-/// Run the `unicode.py` script to download it.
 #[test]
 fn test_canonical_equivalence() {
     let norm_file = BufReader::new(
-        File::open("scripts/NormalizationTest.txt")
+        File::open("tests/NormalizationTest.txt")
             .expect("run `unicode.py` first to download `NormalizationTest.txt`"),
     );
     for line in norm_file.lines() {
