@@ -198,3 +198,24 @@ fn test_emoji_presentation() {
     assert_eq!(UnicodeWidthStr::width("\u{1F6F3}\u{FE0F}"), 2);
     assert_eq!(UnicodeWidthStr::width("\u{1F700}\u{FE0F}"), 1);
 }
+
+#[test]
+fn test_text_presentation() {
+    assert_eq!('\u{FE0E}'.width(), Some(0));
+
+    assert_eq!('\u{2648}'.width(), Some(2));
+    assert_eq!("\u{2648}\u{FE0E}".width(), 1);
+    assert_eq!("\u{2648}\u{FE0E}".width_cjk(), 2);
+
+    assert_eq!("\u{1F21A}\u{FE0E}".width(), 2);
+    assert_eq!("\u{1F21A}\u{FE0E}".width_cjk(), 2);
+
+    assert_eq!("\u{0301}\u{FE0E}".width(), 0);
+    assert_eq!("\u{0301}\u{FE0E}".width_cjk(), 0);
+
+    assert_eq!("a\u{FE0E}".width(), 1);
+    assert_eq!("a\u{FE0E}".width_cjk(), 1);
+
+    assert_eq!("𘀀\u{FE0E}".width(), 2);
+    assert_eq!("𘀀\u{FE0E}".width_cjk(), 2);
+}
