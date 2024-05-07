@@ -64,8 +64,8 @@ fn test_char2() {
     assert_eq!(UnicodeWidthChar::width('ｈ'), Some(2));
     assert_eq!('ｈ'.width_cjk(), Some(2));
 
-    assert_eq!(UnicodeWidthChar::width('\u{AD}'), Some(1));
-    assert_eq!('\u{AD}'.width_cjk(), Some(1));
+    assert_eq!(UnicodeWidthChar::width('\u{AD}'), Some(0));
+    assert_eq!('\u{AD}'.width_cjk(), Some(0));
 
     assert_eq!(UnicodeWidthChar::width('\u{1160}'), Some(0));
     assert_eq!('\u{1160}'.width_cjk(), Some(0));
