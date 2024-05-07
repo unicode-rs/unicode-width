@@ -4,8 +4,8 @@
 [![crates.io version](https://img.shields.io/crates/v/unicode-width)](https://crates.io/crates/unicode-width)
 [![Docs status](https://img.shields.io/docsrs/unicode-width)](https://docs.rs/unicode-width/)
 
-Determine displayed width of `char` and `str` types according to [Unicode Standard Annex #11][UAX11],
-other portions of the Unicode standard, and common implementations of POSIX [`wcwidth()`](https://pubs.opengroup.org/onlinepubs/9699919799/).
+Determine displayed width of `char` and `str` types according to [Unicode Standard Annex #11][UAX11]
+and other portions of the Unicode standard.
 
 This crate is `#![no_std]`.
 

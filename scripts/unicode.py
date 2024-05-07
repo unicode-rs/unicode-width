@@ -776,9 +776,6 @@ def main(module_path: str):
         map(lambda x: EffectiveWidth.ZERO if x[1] else x[0], zip(eaw_map, zw_map))
     )
 
-    # Override for soft hyphen
-    width_map[0x00AD] = EffectiveWidth.NARROW
-
     tables = make_tables(TABLE_CFGS, enumerate(width_map))
 
     emoji_presentations = load_emoji_presentation_sequences()
