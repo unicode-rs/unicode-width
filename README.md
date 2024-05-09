@@ -16,7 +16,7 @@ use unicode_width::UnicodeWidthStr;
 
 fn main() {
     let teststr = "Ｈｅｌｌｏ, ｗｏｒｌｄ!";
-    let width = UnicodeWidthStr::width(teststr);
+    let width = teststr.width();
     println!("{}", teststr);
     println!("The above string is {} columns wide.", width);
     let width = teststr.width_cjk();
@@ -34,9 +34,9 @@ extern crate unicode_width;
 use unicode_width::UnicodeWidthStr;
 
 fn main() {
-    assert_eq!(UnicodeWidthStr::width("👩"), 2); // Woman
-    assert_eq!(UnicodeWidthStr::width("🔬"), 2); // Microscope
-    assert_eq!(UnicodeWidthStr::width("👩‍🔬"), 4); // Woman scientist
+    assert_eq!("👩".width(), 2); // Woman
+    assert_eq!("🔬".width(), 2); // Microscope
+    assert_eq!("👩‍🔬".width(), 4); // Woman scientist
 }
 ```
 
