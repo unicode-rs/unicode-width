@@ -34,12 +34,13 @@
 //!
 //! 1. [Emoji presentation sequences] have width 2.
 //!    (The width of a string may therefore differ from the sum of the widths of its characters.)
-//! 2. Outside of an East Asian context, [text presentation sequences] have width 1
-//!    iff their base character fulfills all the following requirements:
+//! 2. Outside of an East Asian context, [text presentation sequences] fulfilling all the following requirements
+//!    have width 1:
 //!    - Has the [`Emoji_Presentation`] property, and
 //!    - Not in the [Enclosed Ideographic Supplement] block.
-//! 3. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
-//! 4. The following have width 0:
+//! 3. The sequence `"\r\n"` has width 1.
+//! 4. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
+//! 5. The following have width 0:
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!       with the [`Default_Ignorable_Code_Point`](https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095) property.
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
@@ -55,9 +56,6 @@
 //!      - [`'\u{1B43}'` BALINESE VOWEL SIGN PEPET TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B43).
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!       with a [`Hangul_Syllable_Type`] of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
-//!    - [`'\0'` NUL](https://util.unicode.org/UnicodeJsps/character.jsp?a=0000).
-//! 5. The [control characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BCc%7D)
-//!    have no defined width, and are ignored when determining the width of a string.
 //! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!    with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
 //! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
@@ -99,7 +97,7 @@ mod tables;
 /// Methods for determining displayed width of Unicode characters.
 pub trait UnicodeWidthChar {
     /// Returns the character's displayed width in columns, or `None` if the
-    /// character is a control character other than `'\x00'`.
+    /// character is a control character.
     ///
     /// This function treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
@@ -108,7 +106,7 @@ pub trait UnicodeWidthChar {
     fn width(self) -> Option<usize>;
 
     /// Returns the character's displayed width in columns, or `None` if the
-    /// character is a control character other than `'\x00'`.
+    /// character is a control character.
     ///
     /// This function treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
@@ -120,22 +118,41 @@ pub trait UnicodeWidthChar {
 impl UnicodeWidthChar for char {
     #[inline]
     fn width(self) -> Option<usize> {
-        cw::width(self, false)
+        single_char_width(self, false)
     }
 
     #[inline]
     fn width_cjk(self) -> Option<usize> {
-        cw::width(self, true)
+        single_char_width(self, true)
+    }
+}
+
+/// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or
+/// `None` if `c` is a control character.
+/// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
+/// they're treated as single width.
+#[inline]
+fn single_char_width(c: char, is_cjk: bool) -> Option<usize> {
+    if c < '\u{7F}' {
+        if c >= '\u{20}' {
+            // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
+            Some(1)
+        } else {
+            // U+0001 to U+0020 (exclusive) are control codes
+            None
+        }
+    } else if c >= '\u{A0}' {
+        // No characters >= U+00A0 are control codes, so we can consult the lookup tables
+        Some(cw::lookup_width(c, is_cjk))
+    } else {
+        // U+007F to U+00A0 (exclusive) are control codes
+        None
     }
 }
 
 /// Methods for determining displayed width of Unicode strings.
 pub trait UnicodeWidthStr {
     /// Returns the string's displayed width in columns.
-    ///
-    /// Control characters are treated as having zero width,
-    /// and [emoji presentation sequences](https://unicode.org/reports/tr51/#def_emoji_presentation_sequence)
-    /// are assigned width 2.
     ///
     /// This function treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
@@ -144,10 +161,6 @@ pub trait UnicodeWidthStr {
     fn width(&self) -> usize;
 
     /// Returns the string's displayed width in columns.
-    ///
-    /// Control characters are treated as having zero width,
-    /// and [emoji presentation sequences](https://unicode.org/reports/tr51/#def_emoji_presentation_sequence)
-    /// are assigned width 2.
     ///
     /// This function treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
@@ -168,30 +181,48 @@ impl UnicodeWidthStr for str {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum VariationSelector {
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum NextCharInfo {
+    #[default]
+    Default,
+    LineFeed = 0x0A,
     Vs15 = 0x0E,
     Vs16 = 0x0F,
 }
 
 fn str_width(s: &str, is_cjk: bool) -> usize {
     s.chars()
-        .rfold((0, None), |(sum, vsel), c| match c {
-            '\u{FE0E}' => (sum, Some(VariationSelector::Vs15)),
-            '\u{FE0F}' => (sum, Some(VariationSelector::Vs16)),
-            _ => {
-                let add = match vsel {
-                    Some(VariationSelector::Vs15)
-                        if !is_cjk && cw::starts_non_ideographic_text_presentation_seq(c) =>
-                    {
-                        1
-                    }
-
-                    Some(VariationSelector::Vs16) if cw::starts_emoji_presentation_seq(c) => 2,
-                    _ => cw::width(c, is_cjk).unwrap_or(0),
-                };
-                (sum + add, None)
-            }
+        .rfold((0, NextCharInfo::Default), |(sum, next_info), c| {
+            let (add, info) = width_in_str(c, is_cjk, next_info);
+            (sum + add, info)
         })
         .0
+}
+
+/// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`.
+/// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
+/// they're treated as single width.
+#[inline]
+fn width_in_str(c: char, is_cjk: bool, next_info: NextCharInfo) -> (usize, NextCharInfo) {
+    match next_info {
+        NextCharInfo::Vs15 if !is_cjk && cw::starts_non_ideographic_text_presentation_seq(c) => {
+            (1, NextCharInfo::Default)
+        }
+        NextCharInfo::Vs16 if cw::starts_emoji_presentation_seq(c) => (2, NextCharInfo::Default),
+        _ => {
+            if c <= '\u{A0}' {
+                match c {
+                    '\n' => (1, NextCharInfo::LineFeed),
+                    '\r' if next_info == NextCharInfo::LineFeed => (0, NextCharInfo::Default),
+                    _ => (1, NextCharInfo::Default),
+                }
+            } else {
+                match c {
+                    '\u{FE0E}' => (0, NextCharInfo::Vs15),
+                    '\u{FE0F}' => (0, NextCharInfo::Vs16),
+                    _ => (cw::lookup_width(c, is_cjk), NextCharInfo::Default),
+                }
+            }
+        }
+    }
 }

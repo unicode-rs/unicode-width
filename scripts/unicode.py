@@ -165,20 +165,13 @@ def load_zero_widths() -> "list[bool]":
     """Returns a list `l` where `l[c]` is true if codepoint `c` is considered a zero-width
     character. `c` is considered a zero-width character if
 
-    - it is a control character,
-    - or if it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`),
+    - it has the `Default_Ignorable_Code_Point` property (determined from `DerivedCoreProperties.txt`),
     - or if it has the `Grapheme_Extend` property (determined from `DerivedCoreProperties.txt`),
     - or if it one of eight characters that should be `Grapheme_Extend` but aren't due to a Unicode spec bug,
     - or if it has a `Hangul_Syllable_Type` of `Vowel_Jamo` or `Trailing_Jamo` (determined from `HangulSyllableType.txt`).
     """
 
     zw_map = [False] * NUM_CODEPOINTS
-
-    # Control characters have width 0
-    for c in range(0x00, 0x20):
-        zw_map[c] = True
-    for c in range(0x7F, 0xA0):
-        zw_map[c] = True
 
     # `Default_Ignorable_Code_Point`s also have 0 width:
     # https://www.unicode.org/faq/unsup_char.html#3
@@ -563,7 +556,7 @@ pub mod charwidth {
     /// However, if you change the *actual structure* of the lookup tables (perhaps by editing the
     /// `TABLE_CFGS` global in `unicode.py`) you must ensure that this code reflects those changes.
     #[inline]
-    fn lookup_width(c: char, is_cjk: bool) -> usize {
+    pub fn lookup_width(c: char, is_cjk: bool) -> usize {
         let cp = c as usize;
 
         let t1_offset = TABLES_0[cp >> 13 & 0xFF];
@@ -660,36 +653,6 @@ pub mod charwidth {
         let leaf_byte = TEXT_PRESENTATION_LEAVES.0[idx_of_leaf][idx_within_leaf];
         // Use the 3 LSB of `cp` to index into `leaf_byte`.
         ((leaf_byte >> (cp & 7)) & 1) == 1
-    }
-"""
-        )
-
-        module.write(
-            """
-    /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or
-    /// `None` if `c` is a control character other than `'\\x00'`.
-    /// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
-    /// they're treated as single width.
-    #[inline]
-    pub fn width(c: char, is_cjk: bool) -> Option<usize> {
-        if c < '\\u{7F}' {
-            if c >= '\\u{20}' {
-                // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
-                Some(1)
-            } else if c == '\\0' {
-                // U+0000 *is* a control code, but it's special-cased
-                Some(0)
-            } else {
-                // U+0001 to U+0020 (exclusive) are control codes
-                None
-            }
-        } else if c >= '\\u{A0}' {
-            // No characters >= U+00A0 are control codes, so we can consult the lookup tables
-            Some(lookup_width(c, is_cjk))
-        } else {
-            // U+007F to U+00A0 (exclusive) are control codes
-            None
-        }
     }
 """
         )
