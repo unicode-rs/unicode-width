@@ -754,8 +754,9 @@ def main(module_path: str):
         {EffectiveWidth.NARROW, EffectiveWidth.AMBIGUOUS},
     )
 
-    # Download normalization test file for use by tests
+    # Download files for use by tests
     fetch_open("NormalizationTest.txt", "../tests/")
+    fetch_open("auxiliary/GraphemeBreakTest.txt", "../tests/")
 
     print("------------------------")
     total_size = 0
