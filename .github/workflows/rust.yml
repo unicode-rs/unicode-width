@@ -18,16 +18,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - name: Build
+
+    - name: Build (all features)
+      run: cargo build --features display --verbose
+    - name: Run tests (all features)
+      run: cargo test --features display --verbose
+    - name: Check clippy (all features)
+      run: cargo clippy --features display --lib --tests --verbose
+
+    - name: Build (default features)
       run: cargo build --verbose
-    - name: Run tests
+    - name: Run tests (default features)
       run: cargo test --verbose
-    - name: Build docs
-      run: cargo doc
+    - name: Check clippy (default features)
+      run: cargo clippy --lib --tests --verbose
+
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
     - name: Check formatting
       run: cargo fmt --check
-    - name: Check clippy
-      run: cargo clippy --lib --tests
+
+  nightly:
+    env:
+      RUSTDOCFLAGS: -D warnings --cfg docsrs
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install nightly
+      run: rustup toolchain add nightly && rustup +nightly component add clippy
+    - name: Build docs
+      run: cargo +nightly doc --features display --verbose
+    - name: Check benches
+      run: cargo +nightly clippy --benches --features display --verbose
 
   regen:
     runs-on: ubuntu-latest

@@ -81,7 +81,7 @@
 //! The non-CJK width methods guarantee that canonically equivalent strings are assigned the same width.
 //! However, this guarantee does not currently hold for the CJK width variants.
 
-#![forbid(unsafe_code)]
+#![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(missing_docs)]
 #![doc(
     html_logo_url = "https://unicode-rs.github.io/unicode-rs_sm.png",
@@ -91,6 +91,13 @@
 
 use tables::charwidth as cw;
 pub use tables::UNICODE_VERSION;
+
+#[cfg(feature = "display")]
+mod display;
+
+#[cfg(feature = "display")]
+#[cfg_attr(docsrs, doc(cfg(feature = "display")))]
+pub use display::StrWithWidth;
 
 mod tables;
 
@@ -160,6 +167,37 @@ pub trait UnicodeWidthStr {
     /// non-CJK contexts, or when the context cannot be reliably determined.
     fn width(&self) -> usize;
 
+    /// Returns a wrapper around the string
+    /// with a [`Display`][core::fmt::Display] impl
+    /// that pads, aligns and truncates according to the string's
+    /// displayed width.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// use unicode_width::UnicodeWidthStr;
+    ///
+    /// let string = "字".using_width();
+    /// assert_eq!(format!("{string:<4}"), "字  ");
+    /// assert_eq!(format!("{string:^4}"), " 字 ");
+    /// assert_eq!(format!("{string:>4}"), "  字");
+    ///
+    /// let string = "a".using_width();
+    /// assert_eq!(format!("{string:字<7}"), "a字字字");
+    /// assert_eq!(format!("{string:字^7}"), "字a字字");
+    /// assert_eq!(format!("{string:字>7}"), "字字字a");
+    /// assert_eq!(format!("{string:字<8}"), "a 字字字");
+    /// assert_eq!(format!("{string:字^8}"), "字 a字字");
+    /// assert_eq!(format!("{string:字>8}"), "字字字 a");
+    ///
+    /// // Truncation is by extended grapheme cluster
+    /// let string = "🇺🇳🇺🇳".using_width();
+    /// assert_eq!(format!("{string:.3}"), "🇺🇳");
+    /// ```
+    #[cfg_attr(docsrs, doc(cfg(feature = "display")))]
+    #[cfg(feature = "display")]
+    fn using_width(&self) -> &StrWithWidth;
+
     /// Returns the string's displayed width in columns.
     ///
     /// This function treats characters in the Ambiguous category according
@@ -173,6 +211,12 @@ impl UnicodeWidthStr for str {
     #[inline]
     fn width(&self) -> usize {
         str_width(self, false)
+    }
+
+    #[cfg(feature = "display")]
+    #[inline]
+    fn using_width(&self) -> &StrWithWidth {
+        self.as_ref()
     }
 
     #[inline]

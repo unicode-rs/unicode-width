@@ -10,16 +10,13 @@
 #![feature(test)]
 
 extern crate test;
-
-use std::iter;
-
 use test::Bencher;
 
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[bench]
 fn cargo(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
+    let string = "a".repeat(4096);
 
     b.iter(|| {
         for c in string.chars() {
@@ -31,7 +28,7 @@ fn cargo(b: &mut Bencher) {
 #[bench]
 #[allow(deprecated)]
 fn stdlib(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
+    let string = "a".repeat(4096);
 
     b.iter(|| {
         for c in string.chars() {
@@ -42,7 +39,7 @@ fn stdlib(b: &mut Bencher) {
 
 #[bench]
 fn simple_if(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
+    let string = "a".repeat(4096);
 
     b.iter(|| {
         for c in string.chars() {
@@ -53,7 +50,7 @@ fn simple_if(b: &mut Bencher) {
 
 #[bench]
 fn simple_match(b: &mut Bencher) {
-    let string = iter::repeat('a').take(4096).collect::<String>();
+    let string = "a".repeat(4096);
 
     b.iter(|| {
         for c in string.chars() {
@@ -81,9 +78,9 @@ fn simple_width_if(c: char) -> Option<usize> {
 #[inline]
 fn simple_width_match(c: char) -> Option<usize> {
     match c as u32 {
-        cu if cu == 0 => Some(0),
-        cu if cu < 0x20 => None,
-        cu if cu < 0x7f => Some(1),
+        0 => Some(0),
+        1..=0x1F => None,
+        0x20..=0x7E => Some(1),
         _ => UnicodeWidthChar::width(c),
     }
 }
