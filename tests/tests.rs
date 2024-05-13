@@ -234,3 +234,27 @@ fn char_str_consistent() {
         assert_eq!(c.width().unwrap_or(1), s.width())
     }
 }
+
+#[test]
+fn test_lisu_tones() {
+    for c in '\u{A4F8}'..='\u{A4FD}' {
+        assert_eq!(c.width(), Some(1));
+        assert_eq!(String::from(c).width(), 1);
+    }
+    for c1 in '\u{A4F8}'..='\u{A4FD}' {
+        for c2 in '\u{A4F8}'..='\u{A4FD}' {
+            let mut s = String::with_capacity(8);
+            s.push(c1);
+            s.push(c2);
+            match (c1, c2) {
+                ('\u{A4F8}'..='\u{A4FB}', '\u{A4FC}'..='\u{A4FD}') => assert_eq!(s.width(), 1),
+                _ => assert_eq!(s.width(), 2),
+            }
+        }
+    }
+
+    assert_eq!("ꓪꓹ".width(), 2);
+    assert_eq!("ꓪꓹꓼ".width(), 2);
+    assert_eq!("ꓪꓹꓹ".width(), 3);
+    assert_eq!("ꓪꓼꓼ".width(), 3);
+}
