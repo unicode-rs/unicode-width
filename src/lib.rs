@@ -30,8 +30,7 @@
 //! # Rules for determining width
 //!
 //! This crate currently uses the following rules to determine the width of a
-//! character or string, in order of decreasing precedence. These may be tweaked in the future;
-//! however see [guarantees](#guarantees) below.
+//! character or string, in order of decreasing precedence. These may be tweaked in the future.
 //!
 //! 1. [Emoji presentation sequences] have width 2.
 //! 2. Outside of an East Asian context, [text presentation sequences] have width 1
@@ -77,16 +76,10 @@
 //!
 //! [Enclosed Ideographic Supplement]: https://unicode.org/charts/PDF/U1F200.pdf
 //!
-//! ## Guarantees
+//! ## Canonical equivalence
 //!
-//! - Any two canonically equivalent strings have the same non-CJK width.
-//!   This will not change in any future semver-compatible version.
-//!   (This guarantee does not currently hold for the CJK width variants.)
-//! - The width of any string equals the sum of the widths of its [extended grapheme clusters].
-//!   This is unlikely to change in any future semver-compatible version.
-//!   (This guarantee holds for both CJK and non-CJK width.)
-//!
-//! [extended grapheme clusters]: https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
+//! The non-CJK width methods guarantee that canonically equivalent strings are assigned the same width.
+//! However, this guarantee does not currently hold for the CJK width variants.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -102,14 +95,6 @@ pub use tables::UNICODE_VERSION;
 mod tables;
 
 /// Methods for determining displayed width of Unicode characters.
-///
-/// **NB:** the width of a string may differ from the sum of the widths of its characters;
-/// see the [crate-level documentation](crate#rules-for-determining-width) for more.
-/// Instead of working with individual characters, consider using [extended grapheme clusters],
-/// perhaps with the [`unicode-segmentation`] crate.
-///
-/// [extended grapheme clusters]: https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
-/// [`unicode-segmentation`]: https://docs.rs/unicode-segmentation/latest/unicode_segmentation/trait.UnicodeSegmentation.html#tymethod.graphemes
 pub trait UnicodeWidthChar {
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character.
