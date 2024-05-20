@@ -57,7 +57,12 @@
 //!      - [`'\u{1B43}'` BALINESE VOWEL SIGN PEPET TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B43).
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!       with a [`Hangul_Syllable_Type`] of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
-//!    - `'\u{070F}'` [SYRIAC] ABBREVIATION MARK.
+//!    - The following [`Prepended_Concatenation_Mark`]s:
+//!      - [`'\u{0605}'` NUMBER MARK ABOVE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0605),
+//!      - [`'\u{070F}'` SYRIAC ABBREVIATION MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=070F),
+//!      - [`'\u{0890}'` POUND MARK ABOVE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0890),
+//!      - [`'\u{0891}'` PIASTRE MARK ABOVE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0891), and
+//!      - [`'\u{08E2}'` DISPUTED END OF AYAH](https://util.unicode.org/UnicodeJsps/character.jsp?a=08E2).
 //!    - [`'\u{A8FA}'` DEVANAGARI CARET](https://util.unicode.org/UnicodeJsps/character.jsp?a=A8FA).
 //! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!    with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
@@ -70,6 +75,7 @@
 //! [`Emoji_Presentation`]: https://unicode.org/reports/tr51/#def_emoji_presentation
 //! [`Grapheme_Extend`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G52443
 //! [`Hangul_Syllable_Type`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G45593
+//! [`Prepended_Concatenation_Mark`]: https://www.unicode.org/versions/Unicode15.0.0/ch23.pdf#G37908
 //!
 //! [`Fullwidth`]: https://www.unicode.org/reports/tr11/#ED2
 //! [`Wide`]: https://www.unicode.org/reports/tr11/#ED4
@@ -80,7 +86,6 @@
 //!
 //! [Enclosed Ideographic Supplement]: https://unicode.org/charts/PDF/U1F200.pdf
 //!
-//! [Syriac]: https://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G13006
 //! [Lisu tone letter]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078
 //!
 //! ## Canonical equivalence

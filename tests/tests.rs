@@ -99,14 +99,22 @@ fn test_jamo() {
 
 #[test]
 fn test_prepended_concatenation_marks() {
-    assert_eq!('\u{0600}'.width(), Some(1));
-    assert_eq!('\u{08E2}'.width(), Some(1));
-    assert_eq!('\u{110BD}'.width(), Some(1));
-}
+    for c in [
+        '\u{0600}',
+        '\u{0601}',
+        '\u{0602}',
+        '\u{0603}',
+        '\u{0604}',
+        '\u{06DD}',
+        '\u{110BD}',
+        '\u{110CD}',
+    ] {
+        assert_eq!(c.width(), Some(1), "{c:?} should have width 1");
+    }
 
-#[test]
-fn test_syriac_abbreviation_mark() {
-    assert_eq!('\u{070F}'.width(), Some(0));
+    for c in ['\u{0605}', '\u{070F}', '\u{0890}', '\u{0891}', '\u{08E2}'] {
+        assert_eq!(c.width(), Some(0), "{c:?} should have width 0");
+    }
 }
 
 #[test]
