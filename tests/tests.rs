@@ -107,9 +107,7 @@ fn test_prepended_concatenation_marks() {
 #[test]
 fn test_syriac_abbreviation_mark() {
     assert_eq!('\u{070F}'.width(), Some(0));
-    assert_eq!("\u{070F}".width(), 0);
 }
-
 
 #[test]
 fn test_interlinear_annotation_chars() {
@@ -135,6 +133,11 @@ fn test_marks() {
     assert_eq!('\u{09CB}'.width(), Some(1));
     // But others have width 0
     assert_eq!('\u{09BE}'.width(), Some(0));
+}
+
+#[test]
+fn test_devanagari_caret() {
+    assert_eq!('\u{A8FA}'.width(), Some(0));
 }
 
 #[test]

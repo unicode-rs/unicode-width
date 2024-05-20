@@ -245,6 +245,10 @@ def load_zero_widths() -> "list[bool]":
     # This is a `Prepended_Concatenation_Mark`, but unlike the others it's zero-width
     zw_map[0x070F] = True
 
+    # U+A8FA DEVANAGARI CARET
+    # https://www.unicode.org/versions/Unicode15.0.0/ch12.pdf#G667447
+    zw_map[0xA8FA] = True
+
     return zw_map
 
 
