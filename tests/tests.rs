@@ -100,10 +100,16 @@ fn test_jamo() {
 #[test]
 fn test_prepended_concatenation_marks() {
     assert_eq!('\u{0600}'.width(), Some(1));
-    assert_eq!('\u{070F}'.width(), Some(1));
     assert_eq!('\u{08E2}'.width(), Some(1));
     assert_eq!('\u{110BD}'.width(), Some(1));
 }
+
+#[test]
+fn test_syriac_abbreviation_mark() {
+    assert_eq!('\u{070F}'.width(), Some(0));
+    assert_eq!("\u{070F}".width(), 0);
+}
+
 
 #[test]
 fn test_interlinear_annotation_chars() {

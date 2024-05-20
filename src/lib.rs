@@ -57,6 +57,7 @@
 //!      - [`'\u{1B43}'` BALINESE VOWEL SIGN PEPET TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B43).
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!       with a [`Hangul_Syllable_Type`] of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
+//!    - `'\u{070F}'` [SYRIAC] ABBREVIATION MARK.
 //! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!    with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
 //! 8. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
@@ -78,6 +79,7 @@
 //!
 //! [Enclosed Ideographic Supplement]: https://unicode.org/charts/PDF/U1F200.pdf
 //!
+//! [Syriac]: https://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G13006
 //! [Lisu tone letter]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078
 //!
 //! ## Canonical equivalence

@@ -241,6 +241,10 @@ def load_zero_widths() -> "list[bool]":
     # width 2. Therefore, we treat it as having width 2.
     zw_map[0x115F] = False
 
+    # Syriac abbreviation mark
+    # This is a `Prepended_Concatenation_Mark`, but unlike the others it's zero-width
+    zw_map[0x070F] = True
+
     return zw_map
 
 
