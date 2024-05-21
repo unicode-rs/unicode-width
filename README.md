@@ -1,6 +1,6 @@
 # `unicode-width`
 
-[![Build status](https://github.com/unicode-rs/unicode-width/actions/workflows/rust.yml/badge.svg)](https://travis-ci.org/unicode-rs/unicode-width)
+[![Build status](https://github.com/unicode-rs/unicode-width/actions/workflows/rust.yml/badge.svg)](https://github.com/unicode-rs/unicode-width/actions/workflows/rust.yml)
 [![crates.io version](https://img.shields.io/crates/v/unicode-width)](https://crates.io/crates/unicode-width)
 [![Docs status](https://img.shields.io/docsrs/unicode-width)](https://docs.rs/unicode-width/)
 
