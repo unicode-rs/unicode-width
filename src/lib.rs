@@ -30,8 +30,7 @@
 //! # Rules for determining width
 //!
 //! This crate currently uses the following rules to determine the width of a
-//! character or string, in order of decreasing precedence. These may be tweaked in the future;
-//! however see [guarantees](#guarantees) below.
+//! character or string, in order of decreasing precedence. These may be tweaked in the future.
 //!
 //! 1. [Emoji presentation sequences] have width 2.
 //! 2. Outside of an East Asian context, [text presentation sequences] have width 1
@@ -39,8 +38,10 @@
 //!    - Has the [`Emoji_Presentation`] property, and
 //!    - Is not in the [Enclosed Ideographic Supplement] block.
 //! 3. The sequence `"\r\n"` has width 1.
-//! 4. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
-//! 5. The following have width 0:
+//! 4. [Lisu tone letter] combinations consisting of a character in the range `'\u{A4F8}'..='\u{A4FB}'`
+//!    followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1.
+//! 5. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
+//! 6. The following have width 0:
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!       with the [`Default_Ignorable_Code_Point`] property.
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
@@ -56,11 +57,11 @@
 //!      - [`'\u{1B43}'` BALINESE VOWEL SIGN PEPET TEDUNG](https://util.unicode.org/UnicodeJsps/character.jsp?a=1B43).
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!       with a [`Hangul_Syllable_Type`] of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
-//! 6. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
+//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!    with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
-//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
+//! 8. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
 //!    with an [`East_Asian_Width`] of [`Ambiguous`] have width 2 in an East Asian context, and width 1 otherwise.
-//! 8. All other characters have width 1.
+//! 9. All other characters have width 1.
 //!
 //! [`Default_Ignorable_Code_Point`]: https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095
 //! [`East_Asian_Width`]: https://www.unicode.org/reports/tr11/#ED1
@@ -77,16 +78,12 @@
 //!
 //! [Enclosed Ideographic Supplement]: https://unicode.org/charts/PDF/U1F200.pdf
 //!
-//! ## Guarantees
+//! [Lisu tone letter]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078
 //!
-//! - Any two canonically equivalent strings have the same non-CJK width.
-//!   This will not change in any future semver-compatible version.
-//!   (This guarantee does not currently hold for the CJK width variants.)
-//! - The width of any string equals the sum of the widths of its [extended grapheme clusters].
-//!   This is unlikely to change in any future semver-compatible version.
-//!   (This guarantee holds for both CJK and non-CJK width.)
+//! ## Canonical equivalence
 //!
-//! [extended grapheme clusters]: https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
+//! The non-CJK width methods guarantee that canonically equivalent strings are assigned the same width.
+//! However, this guarantee does not currently hold for the CJK width variants.
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -102,14 +99,6 @@ pub use tables::UNICODE_VERSION;
 mod tables;
 
 /// Methods for determining displayed width of Unicode characters.
-///
-/// **NB:** the width of a string may differ from the sum of the widths of its characters;
-/// see the [crate-level documentation](crate#rules-for-determining-width) for more.
-/// Instead of working with individual characters, consider using [extended grapheme clusters],
-/// perhaps with the [`unicode-segmentation`] crate.
-///
-/// [extended grapheme clusters]: https://www.unicode.org/reports/tr29/#Grapheme_Cluster_Boundaries
-/// [`unicode-segmentation`]: https://docs.rs/unicode-segmentation/latest/unicode_segmentation/trait.UnicodeSegmentation.html#tymethod.graphemes
 pub trait UnicodeWidthChar {
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character.
@@ -200,8 +189,14 @@ impl UnicodeWidthStr for str {
 enum NextCharInfo {
     #[default]
     Default,
+    /// `'\n'`
     LineFeed = 0x0A,
+    /// `'\u{A4FC}'..='\u{A4FD}'`
+    /// <https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078>
+    TrailingLisuToneLetter,
+    /// `'\u{FE0E}'`
     Vs15 = 0x0E,
+    /// `'\u{FE0F}'`
     Vs16 = 0x0F,
 }
 
@@ -219,25 +214,28 @@ fn str_width(s: &str, is_cjk: bool) -> usize {
 /// they're treated as single width.
 #[inline]
 fn width_in_str(c: char, is_cjk: bool, next_info: NextCharInfo) -> (usize, NextCharInfo) {
-    match next_info {
-        NextCharInfo::Vs15 if !is_cjk && cw::starts_non_ideographic_text_presentation_seq(c) => {
-            (1, NextCharInfo::Default)
+    if next_info == NextCharInfo::Vs16 && cw::starts_emoji_presentation_seq(c) {
+        (2, NextCharInfo::Default)
+    } else if c <= '\u{A0}' {
+        match c {
+            '\n' => (1, NextCharInfo::LineFeed),
+            '\r' if next_info == NextCharInfo::LineFeed => (0, NextCharInfo::Default),
+            _ => (1, NextCharInfo::Default),
         }
-        NextCharInfo::Vs16 if cw::starts_emoji_presentation_seq(c) => (2, NextCharInfo::Default),
-        _ => {
-            if c <= '\u{A0}' {
-                match c {
-                    '\n' => (1, NextCharInfo::LineFeed),
-                    '\r' if next_info == NextCharInfo::LineFeed => (0, NextCharInfo::Default),
-                    _ => (1, NextCharInfo::Default),
-                }
-            } else {
-                match c {
-                    '\u{FE0E}' => (0, NextCharInfo::Vs15),
-                    '\u{FE0F}' => (0, NextCharInfo::Vs16),
-                    _ => (cw::lookup_width(c, is_cjk), NextCharInfo::Default),
-                }
+    } else {
+        match (c, next_info) {
+            ('\u{A4F8}'..='\u{A4FB}', NextCharInfo::TrailingLisuToneLetter) => {
+                (0, NextCharInfo::Default)
             }
+            ('\u{A4FC}'..='\u{A4FD}', _) => (1, NextCharInfo::TrailingLisuToneLetter),
+            ('\u{FE0E}', _) => (0, NextCharInfo::Vs15),
+            ('\u{FE0F}', _) => (0, NextCharInfo::Vs16),
+            (_, NextCharInfo::Vs15)
+                if !is_cjk && cw::starts_non_ideographic_text_presentation_seq(c) =>
+            {
+                (1, NextCharInfo::Default)
+            }
+            _ => (cw::lookup_width(c, is_cjk), NextCharInfo::Default),
         }
     }
 }

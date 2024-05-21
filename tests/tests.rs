@@ -177,61 +177,6 @@ fn test_canonical_equivalence() {
 }
 
 #[test]
-fn test_grapheme_clusters() {
-    let norm_file = BufReader::new(
-        File::open("tests/GraphemeBreakTest.txt")
-            .expect("run `unicode.py` first to download `GraphemeBreakTest.txt`"),
-    );
-    for line in norm_file.lines() {
-        let line = &*line.unwrap();
-        let line = line.split_once('#').map_or(line, |(start, _)| start).trim();
-
-        if line.is_empty() {
-            continue;
-        }
-
-        let grapheme_clusters_iter = line.split('÷').map(|substr| -> String {
-            let substr = substr.trim();
-            if substr.is_empty() {
-                String::new()
-            } else {
-                substr
-                    .split('×')
-                    .map(|s| char::try_from(u32::from_str_radix(s.trim(), 16).unwrap()).unwrap())
-                    .collect()
-            }
-        });
-
-        let whole_str: String = line
-            .split(|c| matches!(c, '÷' | '×'))
-            .filter_map(|substr| {
-                let substr = substr.trim();
-                (!substr.is_empty()).then(|| {
-                    char::try_from(u32::from_str_radix(substr.trim(), 16).unwrap()).unwrap()
-                })
-            })
-            .collect();
-
-        let whole_str_width = whole_str.width();
-
-        assert_eq!(
-            grapheme_clusters_iter
-                .clone()
-                .map(|c| c.width())
-                .sum::<usize>(),
-            whole_str_width,
-            "{line}",
-        );
-
-        assert_eq!(
-            grapheme_clusters_iter.map(|c| c.width()).sum::<usize>(),
-            whole_str_width,
-            "(CJK) {line}",
-        );
-    }
-}
-
-#[test]
 fn test_emoji_presentation() {
     assert_eq!('\u{0023}'.width(), Some(1));
     assert_eq!('\u{FE0F}'.width(), Some(0));
@@ -288,4 +233,28 @@ fn char_str_consistent() {
         s.push(c);
         assert_eq!(c.width().unwrap_or(1), s.width())
     }
+}
+
+#[test]
+fn test_lisu_tones() {
+    for c in '\u{A4F8}'..='\u{A4FD}' {
+        assert_eq!(c.width(), Some(1));
+        assert_eq!(String::from(c).width(), 1);
+    }
+    for c1 in '\u{A4F8}'..='\u{A4FD}' {
+        for c2 in '\u{A4F8}'..='\u{A4FD}' {
+            let mut s = String::with_capacity(8);
+            s.push(c1);
+            s.push(c2);
+            match (c1, c2) {
+                ('\u{A4F8}'..='\u{A4FB}', '\u{A4FC}'..='\u{A4FD}') => assert_eq!(s.width(), 1),
+                _ => assert_eq!(s.width(), 2),
+            }
+        }
+    }
+
+    assert_eq!("ꓪꓹ".width(), 2);
+    assert_eq!("ꓪꓹꓼ".width(), 2);
+    assert_eq!("ꓪꓹꓹ".width(), 3);
+    assert_eq!("ꓪꓼꓼ".width(), 3);
 }
