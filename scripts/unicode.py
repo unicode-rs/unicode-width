@@ -15,9 +15,14 @@
 # - DerivedCoreProperties.txt
 # - EastAsianWidth.txt
 # - HangulSyllableType.txt
+# - NormalizationTest.txt (for tests only)
 # - PropList.txt
 # - ReadMe.txt
+# - Scripts.txt
+# - UnicodeData.txt
+# - emoji/emoji-data.txt
 # - emoji/emoji-variation-sequences.txt
+# - extracted/DerivedGeneralCategory.txt
 #
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the generated module into git.
@@ -142,6 +147,7 @@ def load_east_asian_widths() -> list[EffectiveWidth]:
     `Wide` and `Fullwidth` characters are assigned `EffectiveWidth.WIDE`.
 
     `Ambiguous` characters are assigned `EffectiveWidth.AMBIGUOUS`."""
+
     with fetch_open("EastAsianWidth.txt") as eaw:
         # matches a width assignment for a single codepoint, i.e. "1F336;N  # ..."
         single = re.compile(r"^([0-9A-F]+)\s*;\s*(\w+) +# (\w+)")
@@ -179,7 +185,43 @@ def load_east_asian_widths() -> list[EffectiveWidth]:
             # Catch any leftover codepoints and assign them implicit Neutral/narrow width.
             width_map.append(EffectiveWidth.NARROW)
 
-        return width_map
+    # Characters from alphabetic scripts are narrow
+    load_property(
+        "Scripts.txt",
+        r"(?:Latin|Greek|Cyrillic)",
+        lambda cp: (
+            operator.setitem(width_map, cp, EffectiveWidth.NARROW)
+            if width_map[cp] == EffectiveWidth.AMBIGUOUS
+            and not (0x2160 <= cp <= 0x217F)  # Roman numerals remain ambiguous
+            else None
+        ),
+    )
+
+    # Ambiguous `Modifier_Symbol`s are narrow
+    load_property(
+        "extracted/DerivedGeneralCategory.txt",
+        "Sk",
+        lambda cp: (
+            operator.setitem(width_map, cp, EffectiveWidth.NARROW)
+            if width_map[cp] == EffectiveWidth.AMBIGUOUS
+            else None
+        ),
+    )
+
+    # GREEK ANO TELEIA: NFC decomposes to U+00B7 MIDDLE DOT
+    width_map[0x0387] = EffectiveWidth.AMBIGUOUS
+
+    # Canonical equivalence for symbols with stroke
+    with fetch_open("UnicodeData.txt") as udata:
+        single = re.compile(r"([0-9A-Z]+);.*?;.*?;.*?;.*?;([0-9A-Z]+) 0338;")
+        for line in udata.readlines():
+            if match := single.match(line):
+                composed = int(match.group(1), 16)
+                decomposed = int(match.group(2), 16)
+                if width_map[decomposed] == EffectiveWidth.AMBIGUOUS:
+                    width_map[composed] = EffectiveWidth.AMBIGUOUS
+
+    return width_map
 
 
 def load_zero_widths() -> list[bool]:

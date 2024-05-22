@@ -40,8 +40,9 @@
 //! 3. The sequence `"\r\n"` has width 1.
 //! 4. [Lisu tone letter] combinations consisting of a character in the range `'\u{A4F8}'..='\u{A4FB}'`
 //!    followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1.
-//! 5. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
-//! 6. The following have width 0:
+//! 5. In an East Asian context only, `<`, `=`, or `>` have width 2 when followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY].
+//! 6. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
+//! 7. The following have width 0:
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!       with the [`Default_Ignorable_Code_Point`] property.
 //!    - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
@@ -64,18 +65,26 @@
 //!      - [`'\u{0891}'` PIASTRE MARK ABOVE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0891), and
 //!      - [`'\u{08E2}'` DISPUTED END OF AYAH](https://util.unicode.org/UnicodeJsps/character.jsp?a=08E2).
 //!    - [`'\u{A8FA}'` DEVANAGARI CARET](https://util.unicode.org/UnicodeJsps/character.jsp?a=A8FA).
-//! 7. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
+//! 8. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!    with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
-//! 8. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DA%7D)
-//!    with an [`East_Asian_Width`] of [`Ambiguous`] have width 2 in an East Asian context, and width 1 otherwise.
-//! 9. All other characters have width 1.
+//! 9. Characters fulfilling all of the following conditions have width 2 in an East Asian context, and width 1 otherwise:
+//!    - Has an [`East_Asian_Width`] of [`Ambiguous`], or
+//!      has a canonical decomposition to an [`Ambiguous`] character followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY], or
+//!      is [`'\u{0387}'` GREEK ANO TELEIA](https://util.unicode.org/UnicodeJsps/character.jsp?a=0387), and
+//!    - Does not have a [`General_Category`] of `Modifier_Symbol`, and
+//!    - Does not have a [`Script`] of `Latin`, `Greek`, or `Cyrillic`, or is a Roman numeral in the range `'\u{2160}'..='\u{217F}'`.
+//! 10. All other characters have width 1.
+//!
+//! [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY]: https://util.unicode.org/UnicodeJsps/character.jsp?a=0338
 //!
 //! [`Default_Ignorable_Code_Point`]: https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095
 //! [`East_Asian_Width`]: https://www.unicode.org/reports/tr11/#ED1
 //! [`Emoji_Presentation`]: https://unicode.org/reports/tr51/#def_emoji_presentation
+//! [`General_Category`]: https://www.unicode.org/versions/Unicode15.0.0/ch04.pdf#G124142
 //! [`Grapheme_Extend`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G52443
 //! [`Hangul_Syllable_Type`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G45593
 //! [`Prepended_Concatenation_Mark`]: https://www.unicode.org/versions/Unicode15.0.0/ch23.pdf#G37908
+//! [`Script`]: https://www.unicode.org/reports/tr24/#Script
 //!
 //! [`Fullwidth`]: https://www.unicode.org/reports/tr11/#ED2
 //! [`Wide`]: https://www.unicode.org/reports/tr11/#ED4
@@ -84,14 +93,13 @@
 //! [Emoji presentation sequences]: https://unicode.org/reports/tr51/#def_emoji_presentation_sequence
 //! [text presentation sequences]: https://unicode.org/reports/tr51/#def_text_presentation_sequence
 //!
-//! [Enclosed Ideographic Supplement]: https://unicode.org/charts/PDF/U1F200.pdf
+//! [Enclosed Ideographic Supplement]: https://unicode.org/charts/nameslist/n_1F200.html
 //!
 //! [Lisu tone letter]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078
 //!
 //! ## Canonical equivalence
 //!
-//! The non-CJK width methods guarantee that canonically equivalent strings are assigned the same width.
-//! However, this guarantee does not currently hold for the CJK width variants.
+//! Canonically equivalent strings are assigned the same width (CJK and non-CJK).
 
 #![forbid(unsafe_code)]
 #![deny(missing_docs)]
@@ -198,14 +206,17 @@ enum NextCharInfo {
     #[default]
     Default,
     /// `'\n'`
-    LineFeed = 0x0A,
+    LineFeed,
+    /// '\u{0338}'
+    /// For preserving canonical equivalence with CJK
+    CombiningLongSolidusOverlay,
     /// `'\u{A4FC}'..='\u{A4FD}'`
     /// <https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078>
     TrailingLisuToneLetter,
     /// `'\u{FE0E}'`
-    Vs15 = 0x0E,
+    Vs15,
     /// `'\u{FE0F}'`
-    Vs16 = 0x0F,
+    Vs16,
 }
 
 fn str_width(s: &str, is_cjk: bool) -> usize {
@@ -222,7 +233,11 @@ fn str_width(s: &str, is_cjk: bool) -> usize {
 /// they're treated as single width.
 #[inline]
 fn width_in_str(c: char, is_cjk: bool, next_info: NextCharInfo) -> (usize, NextCharInfo) {
-    if next_info == NextCharInfo::Vs16 && cw::starts_emoji_presentation_seq(c) {
+    if (is_cjk
+        && next_info == NextCharInfo::CombiningLongSolidusOverlay
+        && matches!(c, '<' | '=' | '>'))
+        || (next_info == NextCharInfo::Vs16 && cw::starts_emoji_presentation_seq(c))
+    {
         (2, NextCharInfo::Default)
     } else if c <= '\u{A0}' {
         match c {
@@ -235,6 +250,7 @@ fn width_in_str(c: char, is_cjk: bool, next_info: NextCharInfo) -> (usize, NextC
             ('\u{A4F8}'..='\u{A4FB}', NextCharInfo::TrailingLisuToneLetter) => {
                 (0, NextCharInfo::Default)
             }
+            ('\u{0338}', _) => (0, NextCharInfo::CombiningLongSolidusOverlay),
             ('\u{A4FC}'..='\u{A4FD}', _) => (1, NextCharInfo::TrailingLisuToneLetter),
             ('\u{FE0E}', _) => (0, NextCharInfo::Vs15),
             ('\u{FE0F}', _) => (0, NextCharInfo::Vs16),

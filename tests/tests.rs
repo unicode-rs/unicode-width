@@ -190,6 +190,24 @@ fn test_canonical_equivalence() {
             nfkd.width(),
             "width of toNFKC(X) == {nfkc:?} differs from toNFKD(X) == {nfkd:?}"
         );
+
+        assert_eq!(
+            orig.width_cjk(),
+            nfc.width_cjk(),
+            "CJK width of X == {orig:?} differs from toNFC(X) == {nfc:?}"
+        );
+
+        assert_eq!(
+            orig.width_cjk(),
+            nfd.width_cjk(),
+            "CJK width of X == {orig:?} differs from toNFD(X) == {nfd:?}"
+        );
+
+        assert_eq!(
+            nfkc.width_cjk(),
+            nfkd.width_cjk(),
+            "CJK width of toNFKC(X) == {nfkc:?} differs from toNFKD(X) == {nfkd:?}"
+        );
     }
 }
 
