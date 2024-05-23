@@ -16,6 +16,7 @@ enum NextCharInfo {
     Default,
     LineFeed,
     HebrewLetterLamed,
+    ZwjHebrewLetterLamed,
     JoiningGroupAlef,
     BugineseLetterYa,
     TifinaghConsonant,
@@ -118,6 +119,15 @@ fn width_in_str(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) {
         // Fast path
         if next_info != NextCharInfo::Default {
             match (next_info, c) {
+                // Hebrew Alef-ZWJ-Lamed ligature
+                (NextCharInfo::HebrewLetterLamed, '\u{200D}') => {
+                    return (0, NextCharInfo::ZwjHebrewLetterLamed);
+                }
+                (NextCharInfo::ZwjHebrewLetterLamed, '\u{05D0}') => {
+                    return (0, NextCharInfo::Default);
+                }
+
+                // Lisu tone letter combinations
                 (NextCharInfo::LisuToneLetterMyaNaJeu, '\u{A4F8}'..='\u{A4FB}') => {
                     return (0, NextCharInfo::Default);
                 }
@@ -233,6 +243,15 @@ fn width_in_str_cjk(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) {
         // Fast path
         if next_info != NextCharInfo::Default {
             match (next_info, c) {
+                // Hebrew Alef-ZWJ-Lamed ligature
+                (NextCharInfo::HebrewLetterLamed, '\u{200D}') => {
+                    return (0, NextCharInfo::ZwjHebrewLetterLamed);
+                }
+                (NextCharInfo::ZwjHebrewLetterLamed, '\u{05D0}') => {
+                    return (0, NextCharInfo::Default);
+                }
+
+                // Lisu tone letter combinations
                 (NextCharInfo::LisuToneLetterMyaNaJeu, '\u{A4F8}'..='\u{A4FB}') => {
                     return (0, NextCharInfo::Default);
                 }

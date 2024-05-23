@@ -249,3 +249,12 @@ fn test_lisu_tones() {
     assert_width!("ꓪꓹꓹ", 3, 3);
     assert_width!("ꓪꓼꓼ", 3, 3);
 }
+
+#[test]
+fn test_hebrew_alef_lamed() {
+    assert_width!("\u{05D0}", 1, 1);
+    assert_width!("\u{05DC}", 1, 1);
+    assert_width!("\u{05D0}\u{05DC}", 2, 2);
+    assert_width!("\u{05D0}\u{200D}\u{05DC}", 1, 1);
+    assert_width!("\u{05D0}\u{05D0}\u{200D}\u{05DC}", 2, 2);
+}

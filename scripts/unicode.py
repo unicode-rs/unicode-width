@@ -140,6 +140,9 @@ class CharWidthInTable(enum.IntEnum):
 
 
 class CharWidth(enum.Enum):
+
+    # BASIC WIDTHS
+
     ZERO = 0
     "Zero columns wide."
 
@@ -149,11 +152,18 @@ class CharWidth(enum.Enum):
     WIDE = 2
     "Two columns wide."
 
+    # CR LF
+
     LINE_FEED = "LineFeed"
     "\\n (CRLF has width 1)"
 
+    # HEBREW ALEF LAMED
+
     HEBREW_LETTER_LAMED = "HebrewLetterLamed"
     "\\u05DC (Alef-ZWJ-Lamed ligature)"
+
+    ZWJ_HEBREW_LETTER_LAMED = "ZwjHebrewLetterLamed"
+    "\\u200D\\u05DC (Alef-ZWJ-Lamed ligature)"
 
     JOINING_GROUP_ALEF = "JoiningGroupAlef"
     "Joining_Group=Alef (Arabic Lam-Alef ligature)"
@@ -915,6 +925,15 @@ fn width_in_str{cjk_lo}(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) 
         // Fast path
         if next_info != NextCharInfo::Default {
             match (next_info, c) {
+                // Hebrew Alef-ZWJ-Lamed ligature
+                (NextCharInfo::HebrewLetterLamed, '\\u{200D}') => {
+                    return (0, NextCharInfo::ZwjHebrewLetterLamed);
+                }
+                (NextCharInfo::ZwjHebrewLetterLamed, '\\u{05D0}') => {
+                    return (0, NextCharInfo::Default);
+                }
+
+                // Lisu tone letter combinations
                 (NextCharInfo::LisuToneLetterMyaNaJeu, '\\u{A4F8}'..='\\u{A4FB}') => {
                     return (0, NextCharInfo::Default);
                 }"""
