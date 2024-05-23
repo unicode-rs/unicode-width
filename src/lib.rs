@@ -23,8 +23,29 @@
 //! let width = UnicodeWidthStr::width(teststr);
 //! println!("{}", teststr);
 //! println!("The above string is {} columns wide.", width);
-//! let width = teststr.width_cjk();
-//! println!("The above string is {} columns wide (CJK).", width);
+//! ```
+//!
+//! # `"cjk"` feature flag
+//!
+//! This crate has one Cargo feature flag, `"cjk"`
+//! (enabled by default).
+//! It enables the [`UnicodeWidthChar::width_cjk`]
+//! and [`UnicodeWidthStr::width_cjk`],
+//! which perform an alternate width calculation
+//! more suited to CJK contexts. The flag also unseals the
+//! [`UnicodeWidthChar`] and [`UnicodeWidthStr`] traits.
+//!
+//! Disabling the flag (with `no_default_features` in `Cargo.toml`)
+//! will reduce the amount of static data needed by the crate.
+//!
+//! ```rust
+//! use unicode_width::UnicodeWidthStr;
+//!
+//! let teststr = "“𘀀”";
+//! assert_eq!(teststr.width(), 4);
+//!
+//! #[cfg(feature = "cjk")]
+//! assert_eq!(teststr.width_cjk(), 6);
 //! ```
 //!
 //! # Rules for determining width

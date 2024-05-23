@@ -15,86 +15,82 @@ use std::{
 
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
+macro_rules! assert_width {
+    ($s:expr, $nocjk:expr, $cjk:expr $(,)?) => {{
+        assert_eq!($s.width(), $nocjk, "{:?} has the wrong width", $s);
+        #[cfg(feature = "cjk")]
+        assert_eq!($s.width_cjk(), $cjk, "{:?} has the wrong width (CJK)", $s);
+    }};
+}
+
+macro_rules! assert_equal_width {
+    ($s0:expr, $s1:expr $(, $($rest:tt)*)?) => {
+        assert_eq!($s0.width(), $s1.width(), "Width of {:?} differs from {:?}", $s0, $s1);
+        #[cfg(feature = "cjk")]
+        assert_eq!($s0.width(), $s1.width(), "Width of {:?} differs from {:?} (CJK)", $s0, $s1);
+
+        $(assert_equal_width!($s0, $($rest)*);)?
+    };
+}
+
 #[test]
 fn test_str() {
-    assert_eq!("ｈｅｌｌｏ".width(), 10);
-    assert_eq!("ｈｅｌｌｏ".width_cjk(), 10);
-    assert_eq!("\0\0\0\x01\x01".width(), 5);
-    assert_eq!("\0\0\0\x01\x01".width_cjk(), 5);
-    assert_eq!("".width(), 0);
-    assert_eq!("".width_cjk(), 0);
-    assert_eq!("\u{2081}\u{2082}\u{2083}\u{2084}".width(), 4);
-    assert_eq!("\u{2081}\u{2082}\u{2083}\u{2084}".width_cjk(), 8);
+    assert_width!("ｈｅｌｌｏ", 10, 10);
+    assert_width!("\0\0\0\x01\x01", 5, 5);
+    assert_width!("", 0, 0);
+    assert_width!("\u{2081}\u{2082}\u{2083}\u{2084}", 4, 8);
 }
 
 #[test]
 fn test_emoji() {
     // Example from the README.
-    assert_eq!("👩".width(), 2); // Woman
-    assert_eq!("🔬".width(), 2); // Microscope
-    assert_eq!("👩‍🔬".width(), 4); // Woman scientist
+    assert_width!("👩", 2, 2); // Woman
+    assert_width!("🔬", 2, 2); // Microscope
+    assert_width!("👩‍🔬", 4, 4); // Woman scientist
 }
 
 #[test]
 fn test_char() {
-    assert_eq!('ｈ'.width(), Some(2));
-    assert_eq!('ｈ'.width_cjk(), Some(2));
-    assert_eq!('\x00'.width(), None);
-    assert_eq!('\x00'.width_cjk(), None);
-    assert_eq!('\x01'.width(), None);
-    assert_eq!('\x01'.width_cjk(), None);
-    assert_eq!('\u{2081}'.width(), Some(1));
-    assert_eq!('\u{2081}'.width_cjk(), Some(2));
+    assert_width!('ｈ', Some(2), Some(2));
+    assert_width!('\x00', None, None);
+    assert_width!('\x01', None, None);
+    assert_width!('\u{2081}', Some(1), Some(2));
 }
 
 #[test]
 fn test_char2() {
-    assert_eq!('\x0A'.width(), None);
-    assert_eq!('\x0A'.width_cjk(), None);
-
-    assert_eq!('w'.width(), Some(1));
-    assert_eq!('w'.width_cjk(), Some(1));
-
-    assert_eq!('ｈ'.width(), Some(2));
-    assert_eq!('ｈ'.width_cjk(), Some(2));
-
-    assert_eq!('\u{AD}'.width(), Some(0));
-    assert_eq!('\u{AD}'.width_cjk(), Some(0));
-
-    assert_eq!('\u{1160}'.width(), Some(0));
-    assert_eq!('\u{1160}'.width_cjk(), Some(0));
-
-    assert_eq!('\u{a1}'.width(), Some(1));
-    assert_eq!('\u{a1}'.width_cjk(), Some(2));
-
-    assert_eq!('\u{300}'.width(), Some(0));
-    assert_eq!('\u{300}'.width_cjk(), Some(0));
+    assert_width!('\x0A', None, None);
+    assert_width!('w', Some(1), Some(1));
+    assert_width!('ｈ', Some(2), Some(2));
+    assert_width!('\u{AD}', Some(0), Some(0));
+    assert_width!('\u{1160}', Some(0), Some(0));
+    assert_width!('\u{a1}', Some(1), Some(2));
+    assert_width!('\u{300}', Some(0), Some(0));
 }
 
 #[test]
 fn unicode_12() {
-    assert_eq!('\u{1F971}'.width(), Some(2));
+    assert_width!('\u{1F971}', Some(2), Some(2));
 }
 
 #[test]
 fn test_default_ignorable() {
-    assert_eq!('\u{E0000}'.width(), Some(0));
-
-    assert_eq!('\u{1160}'.width(), Some(0));
-    assert_eq!('\u{3164}'.width(), Some(0));
-    assert_eq!('\u{FFA0}'.width(), Some(0));
+    assert_width!('\u{1160}', Some(0), Some(0));
+    assert_width!('\u{3164}', Some(0), Some(0));
+    assert_width!('\u{FFA0}', Some(0), Some(0));
+    assert_width!('\u{E0000}', Some(0), Some(0));
 }
 
 #[test]
 fn test_jamo() {
-    assert_eq!('\u{1100}'.width(), Some(2));
-    assert_eq!('\u{A97C}'.width(), Some(2));
+    assert_width!('\u{1100}', Some(2), Some(2));
+    assert_width!('\u{A97C}', Some(2), Some(2));
     // Special case: U+115F HANGUL CHOSEONG FILLER
-    assert_eq!('\u{115F}'.width(), Some(2));
-    assert_eq!('\u{1160}'.width(), Some(0));
-    assert_eq!('\u{D7C6}'.width(), Some(0));
-    assert_eq!('\u{11A8}'.width(), Some(0));
-    assert_eq!('\u{D7FB}'.width(), Some(0));
+    assert_width!('\u{115F}', Some(2), Some(2));
+    assert_width!('\u{1160}', Some(0), Some(0));
+    assert_width!('\u{D7C6}', Some(0), Some(0));
+    assert_width!('\u{11A8}', Some(0), Some(0));
+    assert_width!('\u{D7FB}', Some(0), Some(0));
 }
 
 #[test]
@@ -109,43 +105,43 @@ fn test_prepended_concatenation_marks() {
         '\u{110BD}',
         '\u{110CD}',
     ] {
-        assert_eq!(c.width(), Some(1), "{c:?} should have width 1");
+        assert_width!(c, Some(1), Some(1));
     }
 
     for c in ['\u{0605}', '\u{070F}', '\u{0890}', '\u{0891}', '\u{08E2}'] {
-        assert_eq!(c.width(), Some(0), "{c:?} should have width 0");
+        assert_width!(c, Some(0), Some(0));
     }
 }
 
 #[test]
 fn test_interlinear_annotation_chars() {
-    assert_eq!('\u{FFF9}'.width(), Some(1));
-    assert_eq!('\u{FFFA}'.width(), Some(1));
-    assert_eq!('\u{FFFB}'.width(), Some(1));
+    assert_width!('\u{FFF9}', Some(1), Some(1));
+    assert_width!('\u{FFFA}', Some(1), Some(1));
+    assert_width!('\u{FFFB}', Some(1), Some(1));
 }
 
 #[test]
 fn test_hieroglyph_format_controls() {
-    assert_eq!('\u{13430}'.width(), Some(1));
-    assert_eq!('\u{13436}'.width(), Some(1));
-    assert_eq!('\u{1343C}'.width(), Some(1));
+    assert_width!('\u{13430}', Some(1), Some(1));
+    assert_width!('\u{13436}', Some(1), Some(1));
+    assert_width!('\u{1343C}', Some(1), Some(1));
 }
 
 #[test]
 fn test_marks() {
     // Nonspacing marks have 0 width
-    assert_eq!('\u{0301}'.width(), Some(0));
+    assert_width!('\u{0301}', Some(0), Some(0));
     // Enclosing marks have 0 width
-    assert_eq!('\u{20DD}'.width(), Some(0));
+    assert_width!('\u{20DD}', Some(0), Some(0));
     // Some spacing marks have width 1
-    assert_eq!('\u{09CB}'.width(), Some(1));
+    assert_width!('\u{09CB}', Some(1), Some(1));
     // But others have width 0
-    assert_eq!('\u{09BE}'.width(), Some(0));
+    assert_width!('\u{09BE}', Some(0), Some(0));
 }
 
 #[test]
 fn test_devanagari_caret() {
-    assert_eq!('\u{A8FA}'.width(), Some(0));
+    assert_width!('\u{A8FA}', Some(0), Some(0));
 }
 
 #[test]
@@ -173,91 +169,49 @@ fn test_canonical_equivalence() {
         let nfkc = forms_iter.next().unwrap();
         let nfkd = forms_iter.next().unwrap();
 
-        assert_eq!(
-            orig.width(),
-            nfc.width(),
-            "width of X == {orig:?} differs from toNFC(X) == {nfc:?}"
-        );
-
-        assert_eq!(
-            orig.width(),
-            nfd.width(),
-            "width of X == {orig:?} differs from toNFD(X) == {nfd:?}"
-        );
-
-        assert_eq!(
-            nfkc.width(),
-            nfkd.width(),
-            "width of toNFKC(X) == {nfkc:?} differs from toNFKD(X) == {nfkd:?}"
-        );
-
-        assert_eq!(
-            orig.width_cjk(),
-            nfc.width_cjk(),
-            "CJK width of X == {orig:?} differs from toNFC(X) == {nfc:?}"
-        );
-
-        assert_eq!(
-            orig.width_cjk(),
-            nfd.width_cjk(),
-            "CJK width of X == {orig:?} differs from toNFD(X) == {nfd:?}"
-        );
-
-        assert_eq!(
-            nfkc.width_cjk(),
-            nfkd.width_cjk(),
-            "CJK width of toNFKC(X) == {nfkc:?} differs from toNFKD(X) == {nfkd:?}"
-        );
+        assert_equal_width!(orig, nfc, nfd);
+        assert_equal_width!(nfkc, nfkd);
     }
 }
 
 #[test]
 fn test_emoji_presentation() {
-    assert_eq!('\u{0023}'.width(), Some(1));
-    assert_eq!('\u{FE0F}'.width(), Some(0));
-    assert_eq!(UnicodeWidthStr::width("\u{0023}\u{FE0F}"), 2);
-    assert_eq!(UnicodeWidthStr::width("a\u{0023}\u{FE0F}a"), 4);
-    assert_eq!(UnicodeWidthStr::width("\u{0023}a\u{FE0F}"), 2);
-    assert_eq!(UnicodeWidthStr::width("a\u{FE0F}"), 1);
-    assert_eq!(UnicodeWidthStr::width("\u{0023}\u{0023}\u{FE0F}a"), 4);
-
-    assert_eq!(UnicodeWidthStr::width("\u{002A}\u{FE0F}"), 2);
-    assert_eq!(UnicodeWidthStr::width("\u{23F9}\u{FE0F}"), 2);
-    assert_eq!(UnicodeWidthStr::width("\u{24C2}\u{FE0F}"), 2);
-    assert_eq!(UnicodeWidthStr::width("\u{1F6F3}\u{FE0F}"), 2);
-    assert_eq!(UnicodeWidthStr::width("\u{1F700}\u{FE0F}"), 1);
+    assert_width!('\u{0023}', Some(1), Some(1));
+    assert_width!('\u{FE0F}', Some(0), Some(0));
+    assert_width!("\u{0023}\u{FE0F}", 2, 2);
+    assert_width!("a\u{0023}\u{FE0F}a", 4, 4);
+    assert_width!("\u{0023}a\u{FE0F}", 2, 2);
+    assert_width!("a\u{FE0F}", 1, 1);
+    assert_width!("\u{0023}\u{0023}\u{FE0F}a", 4, 4);
+    assert_width!("\u{002A}\u{FE0F}", 2, 2);
+    assert_width!("\u{23F9}\u{FE0F}", 2, 2);
+    assert_width!("\u{24C2}\u{FE0F}", 2, 2);
+    assert_width!("\u{1F6F3}\u{FE0F}", 2, 2);
+    assert_width!("\u{1F700}\u{FE0F}", 1, 1);
 }
 
 #[test]
 fn test_text_presentation() {
-    assert_eq!('\u{FE0E}'.width(), Some(0));
-
-    assert_eq!('\u{2648}'.width(), Some(2));
-    assert_eq!("\u{2648}\u{FE0E}".width(), 1);
-    assert_eq!("\u{2648}\u{FE0E}".width_cjk(), 2);
-
-    assert_eq!("\u{1F21A}\u{FE0E}".width(), 2);
-    assert_eq!("\u{1F21A}\u{FE0E}".width_cjk(), 2);
-
-    assert_eq!("\u{0301}\u{FE0E}".width(), 0);
-    assert_eq!("\u{0301}\u{FE0E}".width_cjk(), 0);
-
-    assert_eq!("a\u{FE0E}".width(), 1);
-    assert_eq!("a\u{FE0E}".width_cjk(), 1);
-
-    assert_eq!("𘀀\u{FE0E}".width(), 2);
-    assert_eq!("𘀀\u{FE0E}".width_cjk(), 2);
+    assert_width!('\u{FE0E}', Some(0), Some(0));
+    assert_width!('\u{2648}', Some(2), Some(2));
+    assert_width!("\u{2648}\u{FE0E}", 1, 2);
+    assert_width!("\u{1F21A}\u{FE0E}", 2, 2);
+    assert_width!("\u{0301}\u{FE0E}", 0, 0);
+    assert_width!("a\u{FE0E}", 1, 1);
+    assert_width!("𘀀\u{FE0E}", 2, 2);
 }
 
 #[test]
 fn test_control_line_break() {
-    assert_eq!('\u{2028}'.width(), Some(1));
-    assert_eq!('\u{2029}'.width(), Some(1));
-    assert_eq!("\r".width(), 1);
-    assert_eq!("\n".width(), 1);
-    assert_eq!("\r\n".width(), 1);
-    assert_eq!("\0".width(), 1);
-    assert_eq!("1\t2\r\n3\u{85}4".width(), 7);
+    assert_width!('\u{2028}', Some(1), Some(1));
+    assert_width!('\u{2029}', Some(1), Some(1));
+    assert_width!('\r', None, None);
+    assert_width!('\n', None, None);
+    assert_width!("\r", 1, 1);
+    assert_width!("\n", 1, 1);
+    assert_width!("\r\n", 1, 1);
+    assert_width!("\0", 1, 1);
+    assert_width!("1\t2\r\n3\u{85}4", 7, 7);
 }
 
 #[test]
@@ -266,15 +220,17 @@ fn char_str_consistent() {
     for c in '\0'..=char::MAX {
         s.clear();
         s.push(c);
-        assert_eq!(c.width().unwrap_or(1), s.width())
+        assert_eq!(c.width().unwrap_or(1), s.width());
+        #[cfg(feature = "cjk")]
+        assert_eq!(c.width_cjk().unwrap_or(1), s.width_cjk());
     }
 }
 
 #[test]
 fn test_lisu_tones() {
     for c in '\u{A4F8}'..='\u{A4FD}' {
-        assert_eq!(c.width(), Some(1));
-        assert_eq!(String::from(c).width(), 1);
+        assert_width!(c, Some(1), Some(1));
+        assert_width!(String::from(c), 1, 1);
     }
     for c1 in '\u{A4F8}'..='\u{A4FD}' {
         for c2 in '\u{A4F8}'..='\u{A4FD}' {
@@ -282,14 +238,14 @@ fn test_lisu_tones() {
             s.push(c1);
             s.push(c2);
             match (c1, c2) {
-                ('\u{A4F8}'..='\u{A4FB}', '\u{A4FC}'..='\u{A4FD}') => assert_eq!(s.width(), 1),
-                _ => assert_eq!(s.width(), 2),
+                ('\u{A4F8}'..='\u{A4FB}', '\u{A4FC}'..='\u{A4FD}') => assert_width!(s, 1, 1),
+                _ => assert_width!(s, 2, 2),
             }
         }
     }
 
-    assert_eq!("ꓪꓹ".width(), 2);
-    assert_eq!("ꓪꓹꓼ".width(), 2);
-    assert_eq!("ꓪꓹꓹ".width(), 3);
-    assert_eq!("ꓪꓼꓼ".width(), 3);
+    assert_width!("ꓪꓹ", 2, 2);
+    assert_width!("ꓪꓹꓼ", 2, 2);
+    assert_width!("ꓪꓹꓹ", 3, 3);
+    assert_width!("ꓪꓼꓼ", 3, 3);
 }
