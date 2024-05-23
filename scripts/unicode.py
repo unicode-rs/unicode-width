@@ -36,7 +36,7 @@ import sys
 import urllib.request
 from collections import defaultdict
 from itertools import batched
-from typing import Callable
+from typing import Callable, Iterable
 
 UNICODE_VERSION = "15.1.0"
 """The version of the Unicode data files to download."""
@@ -61,12 +61,12 @@ class OffsetType(enum.IntEnum):
 
 
 TABLE_CFGS = [
-    (13, MAX_CODEPOINT_BITS, OffsetType.U8),
-    (6, 13, OffsetType.U8),
-    (0, 6, OffsetType.U2),
+    (13, MAX_CODEPOINT_BITS, OffsetType.U8, 128, None),
+    (6, 13, OffsetType.U8, 128, 128),
+    (0, 6, OffsetType.U2, 16, 16),
 ]
 """Represents the format of each level of the multi-level lookup table.
-A level's entry is of the form `(low_bit, cap_bit, offset_type)`.
+A level's entry is of the form `(low_bit, cap_bit, offset_type, align, bytes_per_row)`.
 This means that every sub-table in that level is indexed by bits `low_bit..cap_bit` of the
 codepoint and those tables offsets are stored according to `offset_type`.
 
@@ -342,7 +342,9 @@ class Bucket:
         return potential_width
 
 
-def make_buckets(entries, low_bit: BitPos, cap_bit: BitPos) -> list[Bucket]:
+def make_buckets(
+    entries: Iterable[tuple[int, EffectiveWidth]], low_bit: BitPos, cap_bit: BitPos
+) -> list[Bucket]:
     """Partitions the `(Codepoint, EffectiveWidth)` tuples in `entries` into `Bucket`s. All
     codepoints with identical bits from `low_bit` to `cap_bit` (exclusive) are placed in the
     same bucket. Returns a list of the buckets in increasing order of those bits."""
@@ -370,7 +372,13 @@ class Table:
     discard the buckets and convert the entries into `EffectiveWidth` values."""
 
     def __init__(
-        self, entry_groups, low_bit: BitPos, cap_bit: BitPos, offset_type: OffsetType
+        self,
+        entry_groups: Iterable[Iterable[tuple[int, EffectiveWidth]]],
+        low_bit: BitPos,
+        cap_bit: BitPos,
+        offset_type: OffsetType,
+        align: int,
+        bytes_per_row: int | None,
     ):
         """Create a lookup table with a sub-table for each `(Codepoint, EffectiveWidth)` iterator
         in `entry_groups`. Each sub-table is indexed by codepoint bits in `low_bit..cap_bit`,
@@ -381,6 +389,8 @@ class Table:
         self.offset_type = offset_type
         self.entries = []
         self.indexed = []
+        self.align = align
+        self.bytes_per_row = bytes_per_row
 
         buckets = []
         for entries in entry_groups:
@@ -426,16 +436,17 @@ class Table:
 
 
 def make_tables(
-    table_cfgs: list[tuple[BitPos, BitPos, OffsetType]], entries
+    table_cfgs: list[tuple[BitPos, BitPos, OffsetType, int, int | None]],
+    entries: Iterable[tuple[int, EffectiveWidth]],
 ) -> list[Table]:
     """Creates a table for each configuration in `table_cfgs`, with the first config corresponding
     to the top-level lookup table, the second config corresponding to the second-level lookup
     table, and so forth. `entries` is an iterator over the `(Codepoint, EffectiveWidth)` pairs
     to include in the top-level table."""
-    tables = []
-    entry_groups = [entries]
-    for low_bit, cap_bit, offset_type in table_cfgs:
-        table = Table(entry_groups, low_bit, cap_bit, offset_type)
+    tables: list[Table] = []
+    entry_groups: Iterable[Iterable[tuple[int, EffectiveWidth]]] = [entries]
+    for low_bit, cap_bit, offset_type, align, bytes_per_row in table_cfgs:
+        table = Table(entry_groups, low_bit, cap_bit, offset_type, align, bytes_per_row)
         entry_groups = map(lambda bucket: bucket.entries(), table.buckets())
         tables.append(table)
     return tables
@@ -606,13 +617,13 @@ pub mod charwidth {
         // Each sub-table in TABLES_1 is 7 bits, and each stored entry is a byte,
         // so each sub-table is 128 bytes in size.
         // (Sub-tables are selected using the computed offset from the previous table.)
-        let t2_offset = TABLES_1.0[128 * usize::from(t1_offset) + (cp >> 6 & 0x7F)];
+        let t2_offset = TABLES_1.0[usize::from(t1_offset)][cp >> 6 & 0x7F];
 
         // Each sub-table in TABLES_2 is 6 bits, but each stored entry is 2 bits.
         // This is accomplished by packing four stored entries into one byte.
         // So each sub-table is 2**(6-2) == 16 bytes in size.
         // Since this is the last table, each entry represents an encoded width.
-        let packed_widths = TABLES_2.0[16 * usize::from(t2_offset) + (cp >> 2 & 0xF)];
+        let packed_widths = TABLES_2.0[usize::from(t2_offset)][cp >> 2 & 0xF];
 
         // Extract the packed width
         let width = packed_widths >> (2 * (cp & 0b11)) & 0b11;
@@ -710,21 +721,36 @@ pub mod charwidth {
             new_subtable_count = len(table.buckets())
             if i == len(tables) - 1:
                 table.indices_to_widths()  # for the last table, indices == widths
-                align = 16
-            else:
-                align = 128
             byte_array = table.to_bytes()
             module.write(
                 f"""
     /// Autogenerated. {subtable_count} sub-table(s). Consult [`lookup_width`] for layout info.
-    static TABLES_{i}: Align{align}<[u8; {len(byte_array)}]> = Align{align}(["""
+    static TABLES_{i}: Align{table.align}"""
             )
-            for j, byte in enumerate(byte_array):
-                # Add line breaks for every 15th entry (chosen to match what rustfmt does)
-                if j % 15 == 0:
-                    module.write("\n       ")
-                module.write(f" 0x{byte:02X},")
-            module.write("\n    ]);\n")
+
+            if table.bytes_per_row is None:
+                module.write(f"<[u8; {len(byte_array)}]> = Align{table.align}([")
+                for j, byte in enumerate(byte_array):
+                    # Add line breaks for every 15th entry (chosen to match what rustfmt does)
+                    if j % 15 == 0:
+                        module.write("\n       ")
+                    module.write(f" 0x{byte:02X},")
+                module.write("\n")
+            else:
+                num_rows = len(byte_array) // table.bytes_per_row
+                module.write(f"<[[u8; {table.bytes_per_row}]; {num_rows}]> = Align{table.align}([\n")
+                for row_num in range(0, num_rows):
+                    module.write("        [\n")
+                    row = byte_array[
+                        row_num * table.bytes_per_row : (row_num + 1) * table.bytes_per_row
+                    ]
+                    for subrow in batched(row, 14):
+                        module.write("           ")
+                        for entry in subrow:
+                            module.write(f" 0x{entry:02X},")
+                        module.write("\n")
+                    module.write("        ],\n")
+            module.write("    ]);\n")
             subtable_count = new_subtable_count
 
         # emoji table
