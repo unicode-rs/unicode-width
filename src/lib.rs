@@ -109,13 +109,22 @@
 )]
 #![no_std]
 
-use tables::charwidth as cw;
 pub use tables::UNICODE_VERSION;
 
 mod tables;
 
+mod private {
+    pub trait Sealed {}
+    #[cfg(not(feature = "cjk"))]
+    impl Sealed for char {}
+    #[cfg(not(feature = "cjk"))]
+    impl Sealed for str {}
+    #[cfg(feature = "cjk")]
+    impl<T: ?Sized> Sealed for T {}
+}
+
 /// Methods for determining displayed width of Unicode characters.
-pub trait UnicodeWidthChar {
+pub trait UnicodeWidthChar: private::Sealed {
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character.
     ///
@@ -132,46 +141,25 @@ pub trait UnicodeWidthChar {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 columns wide. This is consistent with the recommendations for
     /// CJK contexts.
+    #[cfg(feature = "cjk")]
     fn width_cjk(self) -> Option<usize>;
 }
 
 impl UnicodeWidthChar for char {
     #[inline]
     fn width(self) -> Option<usize> {
-        single_char_width(self, false)
+        tables::single_char_width(self)
     }
 
+    #[cfg(feature = "cjk")]
     #[inline]
     fn width_cjk(self) -> Option<usize> {
-        single_char_width(self, true)
-    }
-}
-
-/// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or
-/// `None` if `c` is a control character.
-/// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
-/// they're treated as single width.
-#[inline]
-fn single_char_width(c: char, is_cjk: bool) -> Option<usize> {
-    if c < '\u{7F}' {
-        if c >= '\u{20}' {
-            // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
-            Some(1)
-        } else {
-            // U+0000 to U+0020 (exclusive) are control codes
-            None
-        }
-    } else if c >= '\u{A0}' {
-        // No characters >= U+00A0 are control codes, so we can consult the lookup tables
-        Some(cw::lookup_width(c, is_cjk))
-    } else {
-        // U+007F to U+00A0 (exclusive) are control codes
-        None
+        tables::single_char_width_cjk(self)
     }
 }
 
 /// Methods for determining displayed width of Unicode strings.
-pub trait UnicodeWidthStr {
+pub trait UnicodeWidthStr: private::Sealed {
     /// Returns the string's displayed width in columns.
     ///
     /// This function treats characters in the Ambiguous category according
@@ -186,80 +174,19 @@ pub trait UnicodeWidthStr {
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 column wide. This is consistent with the recommendations for
     /// CJK contexts.
+    #[cfg(feature = "cjk")]
     fn width_cjk(&self) -> usize;
 }
 
 impl UnicodeWidthStr for str {
     #[inline]
     fn width(&self) -> usize {
-        str_width(self, false)
+        tables::str_width(self)
     }
 
+    #[cfg(feature = "cjk")]
     #[inline]
     fn width_cjk(&self) -> usize {
-        str_width(self, true)
-    }
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum NextCharInfo {
-    #[default]
-    Default,
-    /// `'\n'`
-    LineFeed,
-    /// '\u{0338}'
-    /// For preserving canonical equivalence with CJK
-    CombiningLongSolidusOverlay,
-    /// `'\u{A4FC}'..='\u{A4FD}'`
-    /// <https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078>
-    TrailingLisuToneLetter,
-    /// `'\u{FE0E}'`
-    Vs15,
-    /// `'\u{FE0F}'`
-    Vs16,
-}
-
-fn str_width(s: &str, is_cjk: bool) -> usize {
-    s.chars()
-        .rfold((0, NextCharInfo::Default), |(sum, next_info), c| {
-            let (add, info) = width_in_str(c, is_cjk, next_info);
-            (sum + add, info)
-        })
-        .0
-}
-
-/// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`.
-/// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
-/// they're treated as single width.
-#[inline]
-fn width_in_str(c: char, is_cjk: bool, next_info: NextCharInfo) -> (usize, NextCharInfo) {
-    if (is_cjk
-        && next_info == NextCharInfo::CombiningLongSolidusOverlay
-        && matches!(c, '<' | '=' | '>'))
-        || (next_info == NextCharInfo::Vs16 && cw::starts_emoji_presentation_seq(c))
-    {
-        (2, NextCharInfo::Default)
-    } else if c <= '\u{A0}' {
-        match c {
-            '\n' => (1, NextCharInfo::LineFeed),
-            '\r' if next_info == NextCharInfo::LineFeed => (0, NextCharInfo::Default),
-            _ => (1, NextCharInfo::Default),
-        }
-    } else {
-        match (c, next_info) {
-            ('\u{A4F8}'..='\u{A4FB}', NextCharInfo::TrailingLisuToneLetter) => {
-                (0, NextCharInfo::Default)
-            }
-            ('\u{0338}', _) => (0, NextCharInfo::CombiningLongSolidusOverlay),
-            ('\u{A4FC}'..='\u{A4FD}', _) => (1, NextCharInfo::TrailingLisuToneLetter),
-            ('\u{FE0E}', _) => (0, NextCharInfo::Vs15),
-            ('\u{FE0F}', _) => (0, NextCharInfo::Vs16),
-            (_, NextCharInfo::Vs15)
-                if !is_cjk && cw::starts_non_ideographic_text_presentation_seq(c) =>
-            {
-                (1, NextCharInfo::Default)
-            }
-            _ => (cw::lookup_width(c, is_cjk), NextCharInfo::Default),
-        }
+        tables::str_width_cjk(self)
     }
 }
