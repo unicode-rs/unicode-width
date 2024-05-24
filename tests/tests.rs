@@ -376,3 +376,24 @@ fn test_buginese_a_i_ya() {
     assert_width!("\u{1A15}\u{1A17}\u{1A17}\u{200D}\u{1A10}", 2, 2);
     assert_width!("\u{1A15}\u{1A17}\u{338}\u{200D}\u{1A10}", 2, 2);
 }
+
+#[test]
+fn test_tifinagh_biconsonants() {
+    assert_width!("\u{2D4F}", 1, 1);
+    assert_width!("\u{2D3E}", 1, 1);
+    assert_width!("\u{2D7F}", 1, 1);
+
+    assert_width!("\u{2D4F}\u{200D}\u{2D3E}", 1, 1);
+    assert_width!("\u{2D4F}\u{2D7F}\u{2D3E}", 1, 1);
+    assert_width!("\u{2D4F}\u{200D}\u{2D3E}", 1, 1);
+    assert_width!(
+        "\u{2D4F}\u{FE0F}\u{200D}\u{2D7F}\u{FE0E}\u{200D}\u{17B5}\u{2D3E}",
+        1,
+        1
+    );
+
+    assert_width!("\u{2D4F}\u{2D7F}\u{2D7F}\u{2D3E}", 4, 4);
+    assert_width!("\u{2D7F}\u{2D3E}", 2, 2);
+    assert_width!("\u{2D7F}\u{2D7F}\u{2D66}", 3, 3);
+    assert_width!("\u{2D66}\u{2D7F}\u{2D3E}", 3, 3);
+}

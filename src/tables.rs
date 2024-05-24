@@ -33,10 +33,11 @@ impl WidthInfo {
     const ZWJ_BUGINESE_LETTER_YA: Self = Self(0b00110001);
     const BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA: Self = Self(0b00110010);
     const TIFINAGH_CONSONANT: Self = Self(0b00100011);
-    const JOINER_TIFINAGH_CONSONANT: Self = Self(0b00110011);
-    const LISU_TONE_LETTER_MYA_NA_JEU: Self = Self(0b00110100);
-    const OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b00100101);
-    const ZWJ_OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b00110101);
+    const ZWJ_TIFINAGH_CONSONANT: Self = Self(0b00110011);
+    const TIFINAGH_JOINER_CONSONANT: Self = Self(0b00110100);
+    const LISU_TONE_LETTER_MYA_NA_JEU: Self = Self(0b00110101);
+    const OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b00100110);
+    const ZWJ_OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b00110110);
 
     /// Whether this width mode is ligature_transparent
     /// (has 3rd MSB set.)
@@ -163,7 +164,7 @@ pub fn single_char_width(c: char) -> Option<usize> {
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`.
 /// Ambiguous width characters are treated as narrow.
 #[inline]
-fn width_in_str(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
+fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
     if next_info.is_emoji_presentation() {
         if starts_emoji_presentation_seq(c) {
             return (2, WidthInfo::DEFAULT);
@@ -224,6 +225,17 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
                     return (0, WidthInfo::DEFAULT)
                 }
 
+                // Tifinagh bi-consonants
+                (WidthInfo::TIFINAGH_CONSONANT | WidthInfo::ZWJ_TIFINAGH_CONSONANT, '\u{2D7F}') => {
+                    return (1, WidthInfo::TIFINAGH_JOINER_CONSONANT);
+                }
+                (WidthInfo::ZWJ_TIFINAGH_CONSONANT, '\u{2D31}'..='\u{2D65}' | '\u{2D6F}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+                (WidthInfo::TIFINAGH_JOINER_CONSONANT, '\u{2D31}'..='\u{2D65}' | '\u{2D6F}') => {
+                    return (-1, WidthInfo::DEFAULT);
+                }
+
                 // Lisu tone letter combinations
                 (WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU, '\u{A4F8}'..='\u{A4FB}') => {
                     return (0, WidthInfo::DEFAULT);
@@ -233,17 +245,21 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
             }
         }
 
-        lookup_width(c)
+        let ret = lookup_width(c);
+        (ret.0 as i8, ret.1)
     }
 }
 
 #[inline]
 pub fn str_width(s: &str) -> usize {
     s.chars()
-        .rfold((0, WidthInfo::DEFAULT), |(sum, next_info), c| {
-            let (add, info) = width_in_str(c, next_info);
-            (sum + (usize::from(add)), info)
-        })
+        .rfold(
+            (0, WidthInfo::DEFAULT),
+            |(sum, next_info), c| -> (usize, WidthInfo) {
+                let (add, info) = width_in_str(c, next_info);
+                (sum.wrapping_add_signed(isize::from(add)), info)
+            },
+        )
         .0
 }
 
@@ -321,7 +337,7 @@ pub fn single_char_width_cjk(c: char) -> Option<usize> {
 /// Ambiguous width characters are treated as wide.
 #[cfg(feature = "cjk")]
 #[inline]
-fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
+fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
     if next_info.is_emoji_presentation() {
         if starts_emoji_presentation_seq(c) {
             return (2, WidthInfo::DEFAULT);
@@ -379,13 +395,24 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
                     return (0, WidthInfo::DEFAULT)
                 }
 
+                // Tifinagh bi-consonants
+                (WidthInfo::TIFINAGH_CONSONANT | WidthInfo::ZWJ_TIFINAGH_CONSONANT, '\u{2D7F}') => {
+                    return (1, WidthInfo::TIFINAGH_JOINER_CONSONANT);
+                }
+                (WidthInfo::ZWJ_TIFINAGH_CONSONANT, '\u{2D31}'..='\u{2D65}' | '\u{2D6F}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+                (WidthInfo::TIFINAGH_JOINER_CONSONANT, '\u{2D31}'..='\u{2D65}' | '\u{2D6F}') => {
+                    return (-1, WidthInfo::DEFAULT);
+                }
+
                 // Lisu tone letter combinations
                 (WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU, '\u{A4F8}'..='\u{A4FB}') => {
                     return (0, WidthInfo::DEFAULT);
                 }
                 (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _) if is_solidus_transparent(c) => {
                     return (
-                        lookup_width_cjk(c).0,
+                        lookup_width_cjk(c).0 as i8,
                         WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY,
                     );
                 }
@@ -397,7 +424,8 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
             }
         }
 
-        lookup_width_cjk(c)
+        let ret = lookup_width_cjk(c);
+        (ret.0 as i8, ret.1)
     }
 }
 
@@ -405,10 +433,13 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {
 #[inline]
 pub fn str_width_cjk(s: &str) -> usize {
     s.chars()
-        .rfold((0, WidthInfo::DEFAULT), |(sum, next_info), c| {
-            let (add, info) = width_in_str_cjk(c, next_info);
-            (sum + (usize::from(add)), info)
-        })
+        .rfold(
+            (0, WidthInfo::DEFAULT),
+            |(sum, next_info), c| -> (usize, WidthInfo) {
+                let (add, info) = width_in_str_cjk(c, next_info);
+                (sum.wrapping_add_signed(isize::from(add)), info)
+            },
+        )
         .0
 }
 

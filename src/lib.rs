@@ -67,20 +67,23 @@
 //!        will not affect the width.
 //!      - **[Arabic]**: A character sequence consisting of one character with [`Joining_Group`]`=Lam`,
 //!        followed by any number of characters with [`Joining_Type`]`=Transparent`, followed by one character
-//!        with [`Joining_Group`]`=Alef`, has total width 1. For example: `"لا"`‎, `"لآ"`‎, `"ڸا"`‎, `"لٟٞأ"`
-//!      - **[Buginese]**: `"\u{1A15}\u{1A17}"` followed by one or more '`\u{200D}`' followed by `'\u{1A10}'`
-//!          (<a, -i>+ZWJ+ya, `"ᨕᨗ‍ᨐ"`) has total width 1.
-//!      - **[Hebrew]**: `'א'` followed by one or more `'\u{200D}'` followed by `'ל'` (Alef+ZWJ+Lamed, `"א‍ל"`) has total width 1.
+//!        with [`Joining_Group`]`=Alef`, has total width 1. For example: `لا`‎, `لآ`‎, `ڸا`‎, `لٟٞأ`
+//!      - **[Buginese]**: `"\u{1A15}\u{1A17}\u{200D}\u{1A10}"` (<a, -i> ya, `ᨕᨗ‍ᨐ`) has total width 1.
+//!      - **[Hebrew]**: `"א\u{200D}ל"` (Alef-Lamed, `א‍ל`) has total width 1.
 //!      - **[Lisu]**: Tone letter combinations consisting of a character in the range `'\u{A4F8}'..='\u{A4FB}'`
-//!        followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1.
+//!        followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1. For example: `ꓹꓼ`
+//!      - **[Tifinagh]**: A sequence of a Tifinagh consonant in the range `'\u{2D31}'..='\u{2D65}' | '\u{2D6F}'`, followed by either
+//!        [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER] or `'\u{200D}'`, followed by another Tifinangh consonant, has total width 1.
+//!        For example: `ⵏ⵿ⴾ`
 //!    - In an East Asian context only, `<`, `=`, or `>` have width 2 when followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY].
 //!      The two characters may be separated by any number of characters whose canonical decompositions consist only of characters meeting
 //!      one of the following requirements:
 //!      - Has [`Canonical_Combining_Class`] greater than 1, or
 //!      - Is a [default-ignorable][`Default_Ignorable_Code_Point`] [combining mark][combining marks].
 //! 2. In all other cases, the width of the string equals the sum of its character widths:
-//!    1. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
-//!    2. The following have width 0:
+//!    1. [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER] has width 1 (outside of the ligatures described previously).
+//!    2. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
+//!    3. The following have width 0:
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!         with the [`Default_Ignorable_Code_Point`] property.
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
@@ -103,17 +106,18 @@
 //!         - [`'\u{0891}'` PIASTRE MARK ABOVE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0891), and
 //!         - [`'\u{08E2}'` DISPUTED END OF AYAH](https://util.unicode.org/UnicodeJsps/character.jsp?a=08E2).
 //!       - [`'\u{A8FA}'` DEVANAGARI CARET](https://util.unicode.org/UnicodeJsps/character.jsp?a=A8FA).
-//!    3. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
+//!    4. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!       with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
-//!    4. Characters fulfilling all of the following conditions have width 2 in an East Asian context, and width 1 otherwise:
+//!    5. Characters fulfilling all of the following conditions have width 2 in an East Asian context, and width 1 otherwise:
 //!       - Has an [`East_Asian_Width`] of [`Ambiguous`], or
 //!         has a canonical decomposition to an [`Ambiguous`] character followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY], or
 //!         is [`'\u{0387}'` GREEK ANO TELEIA](https://util.unicode.org/UnicodeJsps/character.jsp?a=0387), and
 //!       - Does not have a [`General_Category`] of `Modifier_Symbol`, and
 //!       - Does not have a [`Script`] of `Latin`, `Greek`, or `Cyrillic`, or is a Roman numeral in the range `'\u{2160}'..='\u{217F}'`.
-//!    5. All other characters have width 1.
+//!    6. All other characters have width 1.
 //!
 //! [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY]: https://util.unicode.org/UnicodeJsps/character.jsp?a=0338
+//! [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER]: https://util.unicode.org/UnicodeJsps/character.jsp?a=2D7F
 //!
 //! [`Canonical_Combining_Class`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G50313
 //! [`Default_Ignorable_Code_Point`]: https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095
@@ -142,6 +146,7 @@
 //! [Buginese]: https://www.unicode.org/versions/Unicode15.0.0/ch17.pdf#G26743
 //! [Hebrew]: https://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G6528
 //! [Lisu]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G44587
+//! [Tifinagh]: http://www.unicode.org/versions/Unicode15.0.0/ch19.pdf#G43184
 //!
 //!
 //! ## Canonical equivalence

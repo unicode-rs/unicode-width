@@ -1071,7 +1071,7 @@ pub fn single_char_width{cjk_lo}(c: char) -> Option<usize> {{
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`.
 /// Ambiguous width characters are treated as {ambig}.
 {cfg}#[inline]
-fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {{
+fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
     if next_info.is_emoji_presentation() {{
         if starts_emoji_presentation_seq(c) {{
             return (2, WidthInfo::DEFAULT);
@@ -1159,6 +1159,17 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {{
                     return (0, WidthInfo::DEFAULT)
                 }
 
+                // Tifinagh bi-consonants
+                (WidthInfo::TIFINAGH_CONSONANT | WidthInfo::ZWJ_TIFINAGH_CONSONANT, '\\u{2D7F}') => {
+                    return (1, WidthInfo::TIFINAGH_JOINER_CONSONANT);
+                }
+                (WidthInfo::ZWJ_TIFINAGH_CONSONANT, '\\u{2D31}'..='\\u{2D65}' | '\\u{2D6F}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+                (WidthInfo::TIFINAGH_JOINER_CONSONANT, '\\u{2D31}'..='\\u{2D65}' | '\\u{2D6F}') => {
+                    return (-1, WidthInfo::DEFAULT);
+                }
+
                 // Lisu tone letter combinations
                 (WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU, '\\u{A4F8}'..='\\u{A4FB}') => {
                     return (0, WidthInfo::DEFAULT);
@@ -1167,7 +1178,7 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {{
         s += """
                 (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _) if is_solidus_transparent(c) => {
                     return (
-                        lookup_width_cjk(c).0,
+                        lookup_width_cjk(c).0 as i8,
                         WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY,
                     );
                 }
@@ -1181,17 +1192,21 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {{
             }}
         }}
 
-        lookup_width{cjk_lo}(c)
+        let ret = lookup_width{cjk_lo}(c);
+        (ret.0 as i8, ret.1)
     }}
 }}
 
 {cfg}#[inline]
 pub fn str_width{cjk_lo}(s: &str) -> usize {{
     s.chars()
-        .rfold((0, WidthInfo::DEFAULT), |(sum, next_info), c| {{
-            let (add, info) = width_in_str{cjk_lo}(c, next_info);
-            (sum + (usize::from(add)), info)
-        }})
+        .rfold(
+            (0, WidthInfo::DEFAULT),
+            |(sum, next_info), c| -> (usize, WidthInfo) {{
+                let (add, info) = width_in_str{cjk_lo}(c, next_info);
+                (sum.wrapping_add_signed(isize::from(add)), info)
+            }},
+        )
         .0
 }}
 """
