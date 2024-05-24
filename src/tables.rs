@@ -241,6 +241,11 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
                     return (0, WidthInfo::DEFAULT);
                 }
 
+                // Old Turkic ligature
+                (WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I, '\u{10C32}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+
                 _ => {}
             }
         }
@@ -408,6 +413,11 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
 
                 // Lisu tone letter combinations
                 (WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU, '\u{A4F8}'..='\u{A4FB}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+
+                // Old Turkic ligature
+                (WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I, '\u{10C32}') => {
                     return (0, WidthInfo::DEFAULT);
                 }
                 (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _) if is_solidus_transparent(c) => {

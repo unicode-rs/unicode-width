@@ -72,6 +72,7 @@
 //!      - **[Hebrew]**: `"א\u{200D}ל"` (Alef-Lamed, `א‍ל`) has total width 1.
 //!      - **[Lisu]**: Tone letter combinations consisting of a character in the range `'\u{A4F8}'..='\u{A4FB}'`
 //!        followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1. For example: `ꓹꓼ`
+//!      - **[Old Turkic]**: `"\u{10C32}\u{200D}\u{10C03}"` (`𐰲‍𐰃`) has total width 1.
 //!      - **[Tifinagh]**: A sequence of a Tifinagh consonant in the range `'\u{2D31}'..='\u{2D65}' | '\u{2D6F}'`, followed by either
 //!        [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER] or `'\u{200D}'`, followed by another Tifinangh consonant, has total width 1.
 //!        For example: `ⵏ⵿ⴾ`
@@ -146,6 +147,7 @@
 //! [Buginese]: https://www.unicode.org/versions/Unicode15.0.0/ch17.pdf#G26743
 //! [Hebrew]: https://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G6528
 //! [Lisu]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G44587
+//! [Old Turkic]: https://www.unicode.org/versions/Unicode15.0.0/ch14.pdf#G41975
 //! [Tifinagh]: http://www.unicode.org/versions/Unicode15.0.0/ch19.pdf#G43184
 //!
 //!

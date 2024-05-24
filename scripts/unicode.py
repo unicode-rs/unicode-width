@@ -251,7 +251,7 @@ class CharWidth(enum.IntEnum):
     LISU_TONE_LETTER_MYA_NA_JEU = 0b0011_0101
     "\\uA4FC or \\uA4FD (https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078)"
 
-    # Old Turkik orkhon ec - orkhon i
+    # Old Turkic orkhon ec - orkhon i
 
     OLD_TURKIC_LETTER_ORKHON_I = 0b0010_0110
     "\\u10C03 (ORKHON EC-ZWJ-ORKHON I ligature)"
@@ -1172,6 +1172,11 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
 
                 // Lisu tone letter combinations
                 (WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU, '\\u{A4F8}'..='\\u{A4FB}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+
+                // Old Turkic ligature
+                (WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I, '\\u{10C32}') => {
                     return (0, WidthInfo::DEFAULT);
                 }"""
     if is_cjk:

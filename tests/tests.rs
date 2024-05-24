@@ -392,8 +392,26 @@ fn test_tifinagh_biconsonants() {
         1
     );
 
+    assert_width!("\u{2D4F}\u{301}\u{2D7F}\u{2D3E}", 3, 3);
+    assert_width!("\u{2D4F}\u{301}\u{200D}\u{2D3E}", 2, 2);
+    assert_width!("\u{2D4F}\u{2D3E}", 2, 2);
     assert_width!("\u{2D4F}\u{2D7F}\u{2D7F}\u{2D3E}", 4, 4);
     assert_width!("\u{2D7F}\u{2D3E}", 2, 2);
     assert_width!("\u{2D7F}\u{2D7F}\u{2D66}", 3, 3);
     assert_width!("\u{2D66}\u{2D7F}\u{2D3E}", 3, 3);
+}
+
+#[test]
+fn test_old_turkic_ligature() {
+    assert_width!("\u{10C32}", 1, 1);
+    assert_width!("\u{10C03}", 1, 1);
+    assert_width!("\u{10C32}\u{10C03}", 2, 2);
+
+    assert_width!("\u{10C32}\u{200D}\u{10C03}", 1, 1);
+    assert_width!("\u{10C32}\u{FE0F}\u{200D}\u{FE0E}\u{10C03}", 1, 1);
+
+    assert_width!("\u{10C32}\u{2D7F}\u{10C03}", 3, 3);
+    assert_width!("\u{10C32}\u{0301}\u{200D}\u{10C03}", 2, 2);
+    assert_width!("\u{10C03}\u{200D}\u{10C32}", 2, 2);
+    assert_width!("\u{200D}\u{10C32}", 1, 1);
 }
