@@ -127,6 +127,15 @@ fn width_in_str(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) {
                     return (0, NextCharInfo::Default);
                 }
 
+                // Arabic Lam-Alef ligature
+                (
+                    NextCharInfo::JoiningGroupAlef,
+                    '\u{644}' | '\u{6B5}'..='\u{6B8}' | '\u{76A}' | '\u{8A6}' | '\u{8C7}'
+                ) => return (0, NextCharInfo::Default),
+                (NextCharInfo::JoiningGroupAlef, _) if is_transparent_zero_width(c) => {
+                     return (0, NextCharInfo::JoiningGroupAlef);
+                }
+
                 // Lisu tone letter combinations
                 (NextCharInfo::LisuToneLetterMyaNaJeu, '\u{A4F8}'..='\u{A4FB}') => {
                     return (0, NextCharInfo::Default);
@@ -251,6 +260,15 @@ fn width_in_str_cjk(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) {
                     return (0, NextCharInfo::Default);
                 }
 
+                // Arabic Lam-Alef ligature
+                (
+                    NextCharInfo::JoiningGroupAlef,
+                    '\u{644}' | '\u{6B5}'..='\u{6B8}' | '\u{76A}' | '\u{8A6}' | '\u{8C7}'
+                ) => return (0, NextCharInfo::Default),
+                (NextCharInfo::JoiningGroupAlef, _) if is_transparent_zero_width(c) => {
+                     return (0, NextCharInfo::JoiningGroupAlef);
+                }
+
                 // Lisu tone letter combinations
                 (NextCharInfo::LisuToneLetterMyaNaJeu, '\u{A4F8}'..='\u{A4FB}') => {
                     return (0, NextCharInfo::Default);
@@ -272,6 +290,29 @@ pub fn str_width_cjk(s: &str) -> usize {
             (sum + (usize::from(add)), info)
         })
         .0
+}
+
+/// Whether this character is a zero-width character with
+/// `Joining_Type=Transparent`. Used by the Alef-Lamed ligatures
+fn is_transparent_zero_width(c: char) -> bool {
+    use core::cmp::Ordering;
+
+    if lookup_width(c).0 != 0 {
+        // Not zero-width
+        false
+    } else {
+        NON_TRANSPARENT_ZERO_WIDTHS
+            .binary_search_by(|&(lo, hi)| {
+                if c < lo {
+                    Ordering::Greater
+                } else if c > hi {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            })
+            .is_err()
+    }
 }
 
 /// Whether this character forms an [emoji presentation sequence]
@@ -1472,6 +1513,56 @@ static WIDTH_LEAVES: Align32<[[u8; 32]; WIDTH_LEAVES_LEN]> = Align32([
         0xFF, 0xFF,
     ],
 ]);
+
+/// Sorted list of codepoint ranges (inclusive)
+/// that are zero-width but not `Joining_Type=Transparent`
+static NON_TRANSPARENT_ZERO_WIDTHS: [(char, char); 45] = [
+    ('\u{605}', '\u{605}'),
+    ('\u{890}', '\u{891}'),
+    ('\u{8E2}', '\u{8E2}'),
+    ('\u{9BE}', '\u{9BE}'),
+    ('\u{9D7}', '\u{9D7}'),
+    ('\u{B3E}', '\u{B3E}'),
+    ('\u{B57}', '\u{B57}'),
+    ('\u{BBE}', '\u{BBE}'),
+    ('\u{BD7}', '\u{BD7}'),
+    ('\u{CC0}', '\u{CC0}'),
+    ('\u{CC2}', '\u{CC2}'),
+    ('\u{CC7}', '\u{CC8}'),
+    ('\u{CCA}', '\u{CCB}'),
+    ('\u{CD5}', '\u{CD6}'),
+    ('\u{D3E}', '\u{D3E}'),
+    ('\u{D57}', '\u{D57}'),
+    ('\u{DCF}', '\u{DCF}'),
+    ('\u{DDF}', '\u{DDF}'),
+    ('\u{1160}', '\u{11FF}'),
+    ('\u{180E}', '\u{180E}'),
+    ('\u{1B35}', '\u{1B35}'),
+    ('\u{1B3B}', '\u{1B3B}'),
+    ('\u{1B3D}', '\u{1B3D}'),
+    ('\u{1B43}', '\u{1B43}'),
+    ('\u{200C}', '\u{200D}'),
+    ('\u{2065}', '\u{2069}'),
+    ('\u{302E}', '\u{302F}'),
+    ('\u{3164}', '\u{3164}'),
+    ('\u{A8FA}', '\u{A8FA}'),
+    ('\u{D7B0}', '\u{D7C6}'),
+    ('\u{D7CB}', '\u{D7FB}'),
+    ('\u{FF9E}', '\u{FFA0}'),
+    ('\u{FFF0}', '\u{FFF8}'),
+    ('\u{1133E}', '\u{1133E}'),
+    ('\u{11357}', '\u{11357}'),
+    ('\u{114B0}', '\u{114B0}'),
+    ('\u{114BD}', '\u{114BD}'),
+    ('\u{115AF}', '\u{115AF}'),
+    ('\u{11930}', '\u{11930}'),
+    ('\u{1D165}', '\u{1D165}'),
+    ('\u{1D16E}', '\u{1D172}'),
+    ('\u{E0000}', '\u{E0000}'),
+    ('\u{E0002}', '\u{E001F}'),
+    ('\u{E0080}', '\u{E00FF}'),
+    ('\u{E01F0}', '\u{E0FFF}'),
+];
 
 /// Array of 1024-bit bitmaps. Index into the correct bitmap with the 10 LSB of your codepoint
 /// to get whether it can start an emoji presentation sequence.

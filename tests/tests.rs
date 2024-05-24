@@ -258,3 +258,37 @@ fn test_hebrew_alef_lamed() {
     assert_width!("\u{05D0}\u{200D}\u{05DC}", 1, 1);
     assert_width!("\u{05D0}\u{05D0}\u{200D}\u{05DC}", 2, 2);
 }
+
+#[test]
+fn test_arabic_lam_alef() {
+    assert_width!("\u{0644}", 1, 1);
+    assert_width!("\u{06B8}", 1, 1);
+
+    assert_width!("\u{0623}", 1, 1);
+    assert_width!("\u{0627}", 1, 1);
+
+    assert_width!("\u{0644}\u{0623}", 1, 1);
+    assert_width!("\u{0644}\u{0627}", 1, 1);
+    assert_width!("\u{06B8}\u{0623}", 1, 1);
+    assert_width!("\u{06B8}\u{0627}", 1, 1);
+
+    assert_width!("\u{0644}\u{065F}\u{065E}\u{0623}", 1, 1);
+    assert_width!("\u{0644}\u{065F}\u{065E}\u{0627}", 1, 1);
+    assert_width!("\u{06B8}\u{065F}\u{065E}\u{0623}", 1, 1);
+    assert_width!("\u{06B8}\u{065F}\u{065E}\u{0627}", 1, 1);
+
+    assert_width!("\u{0644}\u{0644}\u{0623}", 2, 2);
+    assert_width!("\u{0644}\u{0644}\u{0627}", 2, 2);
+    assert_width!("\u{06B8}\u{06B8}\u{0623}", 2, 2);
+    assert_width!("\u{06B8}\u{06B8}\u{0627}", 2, 2);
+
+    assert_width!("\u{0644}\u{200D}\u{0623}", 2, 2);
+    assert_width!("\u{0644}\u{200D}\u{0627}", 2, 2);
+    assert_width!("\u{06B8}\u{200D}\u{0623}", 2, 2);
+    assert_width!("\u{06B8}\u{200D}\u{0627}", 2, 2);
+
+    assert_width!("\u{0644}\u{1E94B}\u{0623}", 3, 3);
+    assert_width!("\u{0644}\u{1E94B}\u{0627}", 3, 3);
+    assert_width!("\u{06B8}\u{1E94B}\u{0623}", 3, 3);
+    assert_width!("\u{06B8}\u{1E94B}\u{0627}", 3, 3);
+}

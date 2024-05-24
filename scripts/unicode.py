@@ -165,8 +165,12 @@ class CharWidth(enum.Enum):
     ZWJ_HEBREW_LETTER_LAMED = "ZwjHebrewLetterLamed"
     "\\u200D\\u05DC (Alef-ZWJ-Lamed ligature)"
 
+    # ARABIC LAM ALEF
+
     JOINING_GROUP_ALEF = "JoiningGroupAlef"
     "Joining_Group=Alef (Arabic Lam-Alef ligature)"
+
+    # BUGINESE A -I YA
 
     BUGINESE_LETTER_YA = "BugineseLetterYa"
     "\\u1A10 (<a, -i> + ya ligature)"
@@ -475,6 +479,55 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
     return (not_ea, ea)
 
 
+def load_joining_group_lam() -> list[tuple[Codepoint, Codepoint]]:
+    "Returns a list of character ranges with Joining_Group=Lam"
+    lam_joining = []
+    load_property(
+        "extracted/DerivedJoiningGroup.txt",
+        "Lam",
+        lambda cp: lam_joining.append(cp),
+    )
+
+    ret = []
+    for cp in lam_joining:
+        if len(ret) > 0 and ret[-1][1] == cp - 1:
+            ret[-1] = (ret[-1][0], cp)
+        else:
+            ret.append((cp, cp))
+
+    return ret
+
+
+def load_non_transparent_zero_widths(
+    width_map: list[CharWidth],
+) -> list[tuple[Codepoint, Codepoint]]:
+    "Returns a list of character ranges with Joining_Group=Lam"
+
+    zero_widths = set()
+    for cp, width in enumerate(width_map):
+        if width.width_alone() == 0:
+            zero_widths.add(cp)
+
+    transparent = set()
+    load_property(
+        "extracted/DerivedJoiningType.txt",
+        "T",
+        lambda cp: transparent.add(cp),
+    )
+
+    cp_lst = list(zero_widths - transparent)
+    cp_lst.sort()
+
+    ret = []
+    for cp in cp_lst:
+        if len(ret) > 0 and ret[-1][1] == cp - 1:
+            ret[-1] = (ret[-1][0], cp)
+        else:
+            ret.append((cp, cp))
+
+    return ret
+
+
 def make_special_ranges(
     width_map: list[CharWidth],
 ) -> list[tuple[tuple[Codepoint, Codepoint], CharWidth]]:
@@ -579,7 +632,7 @@ class Table:
         align: int,
         bytes_per_row: int | None = None,
         starting_indexed: list[Bucket] = [],
-        cfged: bool = False
+        cfged: bool = False,
     ):
         """Create a lookup table with a sub-table for each `(Codepoint, EffectiveWidth)` iterator
         in `entry_groups`. Each sub-table is indexed by codepoint bits in `low_bit..cap_bit`,
@@ -689,7 +742,7 @@ def make_tables(
         OffsetType.U8,
         128,
         starting_indexed=root_table.indexed,
-        cfged = True
+        cfged=True,
     )
 
     middle_table = Table(
@@ -820,7 +873,9 @@ def make_presentation_sequence_table(
 
 
 def lookup_fns(
-    is_cjk: bool, special_ranges: list[tuple[tuple[Codepoint, Codepoint], CharWidth]]
+    is_cjk: bool,
+    special_ranges: list[tuple[tuple[Codepoint, Codepoint], CharWidth]],
+    joining_group_lam: list[tuple[Codepoint, Codepoint]],
 ) -> str:
     if is_cjk:
         cfg = '#[cfg(feature = "cjk")]\n'
@@ -933,6 +988,25 @@ fn width_in_str{cjk_lo}(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) 
                     return (0, NextCharInfo::Default);
                 }
 
+                // Arabic Lam-Alef ligature
+                (
+                    NextCharInfo::JoiningGroupAlef,
+                    """
+
+    tail = False
+    for lo, hi in joining_group_lam:
+        if tail:
+            s += " | "
+        tail = True
+        s += f"'\\u{{{lo:X}}}'"
+        if hi != lo:
+            s += f"..='\\u{{{hi:X}}}'"
+    s += """
+                ) => return (0, NextCharInfo::Default),
+                (NextCharInfo::JoiningGroupAlef, _) if is_transparent_zero_width(c) => {
+                     return (0, NextCharInfo::JoiningGroupAlef);
+                }
+
                 // Lisu tone letter combinations
                 (NextCharInfo::LisuToneLetterMyaNaJeu, '\\u{A4F8}'..='\\u{A4FB}') => {
                     return (0, NextCharInfo::Default);
@@ -977,6 +1051,8 @@ def emit_module(
     special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], CharWidth]],
     emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
     text_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
+    joining_group_lam: list[tuple[Codepoint, Codepoint]],
+    non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
     If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
@@ -1019,14 +1095,37 @@ pub const UNICODE_VERSION: (u8, u8, u8) = {unicode_version};
 """
         )
 
-        module.write(lookup_fns(False, special_ranges))
-        module.write(lookup_fns(True, special_ranges_cjk))
+        module.write(lookup_fns(False, special_ranges, joining_group_lam))
+        module.write(lookup_fns(True, special_ranges_cjk, joining_group_lam))
 
         emoji_presentation_idx, emoji_presentation_leaves = emoji_presentation_table
         text_presentation_idx, text_presentation_leaves = text_presentation_table
 
         module.write(
             """
+/// Whether this character is a zero-width character with
+/// `Joining_Type=Transparent`. Used by the Alef-Lamed ligatures
+fn is_transparent_zero_width(c: char) -> bool {
+    use core::cmp::Ordering;
+
+    if lookup_width(c).0 != 0 {
+        // Not zero-width
+        false
+    } else {
+        NON_TRANSPARENT_ZERO_WIDTHS
+            .binary_search_by(|&(lo, hi)| {
+                if c < lo {
+                    Ordering::Greater
+                } else if c > hi {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            })
+            .is_err()
+    }
+}
+
 /// Whether this character forms an [emoji presentation sequence]
 /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
 /// when followed by `'\\u{FEOF}'`.
@@ -1107,10 +1206,14 @@ struct Align128<T>(T);
             byte_array = table.to_bytes()
 
             if table.bytes_per_row is None:
-                module.write(f"/// Autogenerated. {subtable_count} sub-table(s). Consult [`lookup_width`] for layout info.)\n")
+                module.write(
+                    f"/// Autogenerated. {subtable_count} sub-table(s). Consult [`lookup_width`] for layout info.)\n"
+                )
                 if table.cfged:
                     module.write('#[cfg(feature = "cjk")]\n')
-                module.write(f"static {table.name}: Align{table.align}<[u8; {len(byte_array)}]> = Align{table.align}([")
+                module.write(
+                    f"static {table.name}: Align{table.align}<[u8; {len(byte_array)}]> = Align{table.align}(["
+                )
                 for j, byte in enumerate(byte_array):
                     # Add line breaks for every 15th entry (chosen to match what rustfmt does)
                     if j % 16 == 0:
@@ -1151,10 +1254,24 @@ static {table.name}: Align{table.align}<[[u8; {table.bytes_per_row}]; {table.nam
             module.write("]);\n")
             subtable_count = new_subtable_count
 
-        # emoji table
+        # non transparent zero width table
 
         module.write(
             f"""
+/// Sorted list of codepoint ranges (inclusive)
+/// that are zero-width but not `Joining_Type=Transparent`
+static NON_TRANSPARENT_ZERO_WIDTHS: [(char, char); {len(non_transparent_zero_widths)}] = [
+"""
+        )
+
+        for lo, hi in non_transparent_zero_widths:
+            module.write(f"    ('\\u{{{lo:X}}}', '\\u{{{hi:X}}}'),\n")
+
+        # emoji table
+
+        module.write(
+            f"""];
+
 /// Array of 1024-bit bitmaps. Index into the correct bitmap with the 10 LSB of your codepoint
 /// to get whether it can start an emoji presentation sequence.
 static EMOJI_PRESENTATION_LEAVES: Align128<[[u8; 128]; {len(emoji_presentation_leaves)}]> = Align128([
@@ -1221,6 +1338,9 @@ def main(module_path: str):
         {CharWidth.NARROW},
     )
 
+    joining_group_lam = load_joining_group_lam()
+    non_transparent_zero_widths = load_non_transparent_zero_widths(width_map)
+
     # Download normalization test file for use by tests
     fetch_open("NormalizationTest.txt", "../tests/")
 
@@ -1245,13 +1365,15 @@ def main(module_path: str):
     print(f"  Total size: {total_size} bytes")
 
     emit_module(
-        module_path,
-        version,
-        tables,
-        special_ranges,
-        cjk_special_ranges,
-        emoji_presentation_table,
-        text_presentation_table,
+        out_name=module_path,
+        unicode_version=version,
+        tables=tables,
+        special_ranges=special_ranges,
+        special_ranges_cjk=cjk_special_ranges,
+        emoji_presentation_table=emoji_presentation_table,
+        text_presentation_table=text_presentation_table,
+        joining_group_lam=joining_group_lam,
+        non_transparent_zero_widths=non_transparent_zero_widths,
     )
     print(f'Wrote to "{module_path}"')
 
