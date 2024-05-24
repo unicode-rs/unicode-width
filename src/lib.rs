@@ -61,13 +61,23 @@
 //!        - Has the [`Emoji_Presentation`] property, and
 //!        - Is not in the [Enclosed Ideographic Supplement] block.
 //!    - Script-specific ligatures:
+//!      - For all the following ligatures, the insertion of any number of [default-ignorable][`Default_Ignorable_Code_Point`]
+//!        [combining marks] anywhere in the sequence will not change the total width. In addition, for all non-Arabic
+//!        ligatures, the insertion of any number of [`'\u{200D}'` ZERO WIDTH JOINER](https://www.unicode.org/versions/Unicode15.0.0/ch23.pdf#G23126)s
+//!        will not affect the width.
 //!      - **[Arabic]**: A character sequence consisting of one character with [`Joining_Group`]`=Lam`,
 //!        followed by any number of characters with [`Joining_Type`]`=Transparent`, followed by one character
-//!        with [`Joining_Group`]`=Alef`, has total width 1. For example: `لا`‎, `لآ`‎, `ڸا`‎, `لٟٞأ`
-//!      - **[Hebrew]**: The sequence `"א\u{200D}ל"` (Alef+ZWJ+Lamed, `א‍ל`) has width 1.
+//!        with [`Joining_Group`]`=Alef`, has total width 1. For example: `"لا"`‎, `"لآ"`‎, `"ڸا"`‎, `"لٟٞأ"`
+//!      - **[Buginese]**: `"\u{1A15}\u{1A17}"` followed by one or more '`\u{200D}`' followed by `'\u{1A10}'`
+//!          (<a, -i>+ZWJ+ya, `"ᨕᨗ‍ᨐ"`) has total width 1.
+//!      - **[Hebrew]**: `'א'` followed by one or more `'\u{200D}'` followed by `'ל'` (Alef+ZWJ+Lamed, `"א‍ל"`) has total width 1.
 //!      - **[Lisu]**: Tone letter combinations consisting of a character in the range `'\u{A4F8}'..='\u{A4FB}'`
 //!        followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1.
 //!    - In an East Asian context only, `<`, `=`, or `>` have width 2 when followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY].
+//!      The two characters may be separated by any number of characters whose canonical decompositions consist only of characters meeting
+//!      one of the following requirements:
+//!      - Has [`Canonical_Combining_Class`] greater than 1, or
+//!      - Is a [default-ignorable][`Default_Ignorable_Code_Point`] [combining mark][combining marks].
 //! 2. In all other cases, the width of the string equals the sum of its character widths:
 //!    1. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) has width 2.
 //!    2. The following have width 0:
@@ -105,6 +115,7 @@
 //!
 //! [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY]: https://util.unicode.org/UnicodeJsps/character.jsp?a=0338
 //!
+//! [`Canonical_Combining_Class`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G50313
 //! [`Default_Ignorable_Code_Point`]: https://www.unicode.org/versions/Unicode15.0.0/ch05.pdf#G40095
 //! [`East_Asian_Width`]: https://www.unicode.org/reports/tr11/#ED1
 //! [`Emoji_Presentation`]: https://unicode.org/reports/tr51/#def_emoji_presentation
@@ -120,15 +131,18 @@
 //! [`Wide`]: https://www.unicode.org/reports/tr11/#ED4
 //! [`Ambiguous`]: https://www.unicode.org/reports/tr11/#ED6
 //!
+//! [combining marks]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G30602
+//!
 //! [Emoji presentation sequences]: https://unicode.org/reports/tr51/#def_emoji_presentation_sequence
 //! [text presentation sequences]: https://unicode.org/reports/tr51/#def_text_presentation_sequence
 //!
 //! [Enclosed Ideographic Supplement]: https://unicode.org/charts/nameslist/n_1F200.html
 //!
 //! [Arabic]: https://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G7480
+//! [Buginese]: https://www.unicode.org/versions/Unicode15.0.0/ch17.pdf#G26743
 //! [Hebrew]: https://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G6528
 //! [Lisu]: https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G44587
-//! 
+//!
 //!
 //! ## Canonical equivalence
 //!

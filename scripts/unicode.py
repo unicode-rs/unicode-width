@@ -93,7 +93,7 @@ def load_unicode_version() -> tuple[int, int, int]:
     """Returns the current Unicode version by fetching and processing `ReadMe.txt`."""
     with fetch_open("ReadMe.txt") as readme:
         pattern = r"for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
-        return tuple(map(int, re.search(pattern, readme.read()).groups()))
+        return tuple(map(int, re.search(pattern, readme.read()).groups()))  # type: ignore
 
 
 def load_property(filename: str, pattern: str, action: Callable[[int], None]):
@@ -113,6 +113,19 @@ def load_property(filename: str, pattern: str, action: Callable[[int], None]):
             high = int(raw_data[1], 16)
             for cp in range(low, high + 1):
                 action(cp)
+
+
+def to_sorted_ranges(iter: Iterable[Codepoint]) -> list[tuple[Codepoint, Codepoint]]:
+    "Creates a sorted list of ranges from an iterable of codepoints"
+    lst = [c for c in iter]
+    lst.sort()
+    ret = []
+    for cp in lst:
+        if len(ret) > 0 and ret[-1][1] == cp - 1:
+            ret[-1] = (ret[-1][0], cp)
+        else:
+            ret.append((cp, cp))
+    return ret
 
 
 class EastAsianWidth(enum.IntEnum):
@@ -139,68 +152,112 @@ class CharWidthInTable(enum.IntEnum):
     SPECIAL = 3
 
 
-class CharWidth(enum.Enum):
+class CharWidth(enum.IntEnum):
+    """The integer values of these variants have special meaning:
+    - Top bit: whether this is Vs16
+    - 2nd from top: whether this is Vs15
+    - 3rd from top: whether this is unaffected by ligature-transparent
+    - 4th bit: if 3rd is set but this one is not, then this is a ZWJ ligature state
+      where no ZWJ has been encountered yet; encountering one flips this on"""
 
     # BASIC WIDTHS
 
-    ZERO = 0
+    ZERO = 0x100
     "Zero columns wide."
 
-    NARROW = 1
+    NARROW = 0x101
     "One column wide."
 
-    WIDE = 2
+    WIDE = 0x102
     "Two columns wide."
 
-    # CR LF
+    # TIGHTLY DEFINED SEQUENCES
 
-    LINE_FEED = "LineFeed"
+    # \r\n
+    LINE_FEED = 0b0000_0011
     "\\n (CRLF has width 1)"
 
-    # HEBREW ALEF LAMED
+    # Emoji skintone modifiers
+    EMOJI_MODIFIER = 0b0000_0100
+    "`Emoji_Modifier`"
 
-    HEBREW_LETTER_LAMED = "HebrewLetterLamed"
-    "\\u05DC (Alef-ZWJ-Lamed ligature)"
+    # Emoji ZWJ sequences
 
-    ZWJ_HEBREW_LETTER_LAMED = "ZwjHebrewLetterLamed"
-    "\\u200D\\u05DC (Alef-ZWJ-Lamed ligature)"
+    REGIONAL_INDICATOR = 0b0000_0101
+    "`Regional_Indicator` (for ZWJ sequences)"
+
+    EMOJI_PRESENTATION = 0b0000_0110
+    "`Emoji_Presentation`"
+
+    # VARIATION SELECTORS
+
+    # Text presentation sequences (not CJK)
+    VARIATION_SELECTOR_15 = 0b0100_0000
+    "\\uFE0E (text presentation sequences)"
+
+    # Emoji presentation sequences
+    VARIATION_SELECTOR_16 = 0b1000_0000
+    "\\uFE0F (emoji presentation sequences)"
+
+    # --- Width modes below this line can have 1 of their top 2 bits set to indicate presence of a VS ---
 
     # ARABIC LAM ALEF
 
-    JOINING_GROUP_ALEF = "JoiningGroupAlef"
+    JOINING_GROUP_ALEF = 0b0000_1111
     "Joining_Group=Alef (Arabic Lam-Alef ligature)"
 
-    # BUGINESE A -I YA
+    # COMBINING SOLIDUS (CJK only)
 
-    BUGINESE_LETTER_YA = "BugineseLetterYa"
+    COMBINING_LONG_SOLIDUS_OVERLAY = 0b0011_1111
+    "\\u0338 (CJK only, makes <, =, > width 2)"
+
+    # SOLIDUS + ALEF (solidus is Joining_Type=Transparent)
+    SOLIDUS_OVERLAY_ALEF = 0b0010_1111
+    "\\u0338 followed by Joining_Group=Alef"
+
+    # SCRIPT ZWJ LIGATURES
+
+    # Hebrew alef lamed
+
+    HEBREW_LETTER_LAMED = 0b0010_0000
+    "\\u05DC (Alef-ZWJ-Lamed ligature)"
+
+    ZWJ_HEBREW_LETTER_LAMED = 0b0011_0000
+    "\\u200D\\u05DC (Alef-ZWJ-Lamed ligature)"
+
+    # Buginese <a -i> ya
+
+    BUGINESE_LETTER_YA = 0b0010_0001
     "\\u1A10 (<a, -i> + ya ligature)"
 
-    TIFINAGH_CONSONANT = "TifinaghConsonant"
+    ZWJ_BUGINESE_LETTER_YA = 0b0011_0001
+    "\\u200D\\u1A10 (<a, -i> + ya ligature)"
+
+    BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA = 0b0011_0010
+    "\\u1A17\\u200D\\u1A10 (<a, -i> + ya ligature)"
+
+    # Tifinagh bi-consonants
+
+    TIFINAGH_CONSONANT = 0b0010_0011
     "\\u2D31..=\\u2D65 or \\u2D6F (joined by ZWJ or \\u2D7F TIFINAGH CONSONANT JOINER)"
 
-    LISU_TONE_LETTER_MYA_NA_JEU = "LisuToneLetterMyaNaJeu"
+    ZWJ_TIFINAGH_CONSONANT = 0b0011_0011
+    "ZWJ then \\u2D31..=\\u2D65 or \\u2D6F"
+
+    TIFINAGH_JOINER_CONSONANT = 0b0011_0100
+    "\\u2D7F then \\u2D31..=\\u2D65 or \\u2D6F"
+
+    # Lisu tone letters
+    LISU_TONE_LETTER_MYA_NA_JEU = 0b0011_0101
     "\\uA4FC or \\uA4FD (https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078)"
 
-    VARIATION_SELECTOR_15 = "VariationSelector15"
-    "\\uFE0E (text presentation sequences)"
+    # Old Turkik orkhon ec - orkhon i
 
-    VARIATION_SELECTOR_16 = "VariationSelector16"
-    "\\uFE0F (emoji presentation sequences)"
-
-    OLD_TURKIC_LETTER_ORKHON_I = "OldTurkicLetterOrkhonI"
+    OLD_TURKIC_LETTER_ORKHON_I = 0b0010_0110
     "\\u10C03 (ORKHON EC-ZWJ-ORKHON I ligature)"
 
-    REGIONAL_INDICATOR = "RegionalIndicator"
-    "`Regional_Indicator` (for ZWJ sequences)"
-
-    EMOJI_MODIFIER = "EmojiModifier"
-    "`Emoji_Modifier`"
-
-    EMOJI_PRESENTATION = "EmojiPresentation"
-    "`Emoji_Presentation`"
-
-    COMBINING_LONG_SOLIDUS_OVERLAY = "CombiningLongSolidusOverlay"
-    "\\u0338 (CJK only, makes <, =, > width 2)"
+    ZWJ_OLD_TURKIC_LETTER_ORKHON_I = 0b0011_0110
+    "\\u10C03 (ORKHON EC-ZWJ-ORKHON I ligature)"
 
     def table_width(self) -> CharWidthInTable:
         "The width of a character as stored in the lookup tables."
@@ -230,6 +287,9 @@ class CharWidth(enum.Enum):
                 return 2
             case _:
                 return 1
+
+
+assert len(set([v.value for v in CharWidth])) == len([v.value for v in CharWidth])
 
 
 def load_east_asian_widths() -> list[EastAsianWidth]:
@@ -488,26 +548,18 @@ def load_joining_group_lam() -> list[tuple[Codepoint, Codepoint]]:
         lambda cp: lam_joining.append(cp),
     )
 
-    ret = []
-    for cp in lam_joining:
-        if len(ret) > 0 and ret[-1][1] == cp - 1:
-            ret[-1] = (ret[-1][0], cp)
-        else:
-            ret.append((cp, cp))
-
-    return ret
+    return to_sorted_ranges(lam_joining)
 
 
 def load_non_transparent_zero_widths(
     width_map: list[CharWidth],
 ) -> list[tuple[Codepoint, Codepoint]]:
-    "Returns a list of character ranges with Joining_Group=Lam"
+    "Returns a list of characters with zero width but not 'Joining_Type=Transparent'"
 
     zero_widths = set()
     for cp, width in enumerate(width_map):
         if width.width_alone() == 0:
             zero_widths.add(cp)
-
     transparent = set()
     load_property(
         "extracted/DerivedJoiningType.txt",
@@ -515,17 +567,77 @@ def load_non_transparent_zero_widths(
         lambda cp: transparent.add(cp),
     )
 
-    cp_lst = list(zero_widths - transparent)
-    cp_lst.sort()
+    return to_sorted_ranges(zero_widths - transparent)
 
-    ret = []
-    for cp in cp_lst:
-        if len(ret) > 0 and ret[-1][1] == cp - 1:
-            ret[-1] = (ret[-1][0], cp)
+
+def load_ligature_transparent() -> list[tuple[Codepoint, Codepoint]]:
+    """Returns a list of character ranges corresponding to all combining marks that are also
+    `Default_Ignorable_Code_Point`s, plus ZWJ. This is the set of characters that won't interrupt
+    a ligature."""
+    default_ignorables = set()
+    load_property(
+        "DerivedCoreProperties.txt",
+        "Default_Ignorable_Code_Point",
+        lambda cp: default_ignorables.add(cp),
+    )
+
+    combining_marks = set()
+    load_property(
+        "extracted/DerivedGeneralCategory.txt",
+        "(?:Mc|Mn|Me)",
+        lambda cp: combining_marks.add(cp),
+    )
+
+    default_ignorable_combinings = default_ignorables.intersection(combining_marks)
+    default_ignorable_combinings.add(0x200D)  # ZWJ
+
+    return to_sorted_ranges(default_ignorable_combinings)
+
+
+def load_solidus_transparent(
+    ligature_transparents: list[tuple[Codepoint, Codepoint]],
+    cjk_width_map: list[CharWidth],
+) -> list[tuple[Codepoint, Codepoint]]:
+    """Characters expanding to a canonical combining class above 1, plus `ligature_transparent`s from above.
+    Ranges matching ones in `ligature_transparent` exactly are excluded (for compression), so it needs to bechecked also.
+    """
+
+    ccc_above_1 = set()
+    load_property(
+        "extracted/DerivedCombiningClass.txt",
+        "(?:[2-9]|(?:[1-9][0-9]+))",
+        lambda cp: ccc_above_1.add(cp),
+    )
+
+    for lo, hi in ligature_transparents:
+        for cp in range(lo, hi + 1):
+            ccc_above_1.add(cp)
+
+    num_chars = len(ccc_above_1)
+
+    # Recursive decompositions
+    while True:
+        with fetch_open("UnicodeData.txt") as udata:
+            single = re.compile(r"([0-9A-Z]+);.*?;.*?;.*?;.*?;([0-9A-F ]+);")
+            for line in udata.readlines():
+                if match := single.match(line):
+                    composed = int(match.group(1), 16)
+                    decomposed = [int(c, 16) for c in match.group(2).split(" ")]
+                    if all([c in ccc_above_1 for c in decomposed]):
+                        ccc_above_1.add(composed)
+        if len(ccc_above_1) == num_chars:
+            break
         else:
-            ret.append((cp, cp))
+            num_chars = len(ccc_above_1)
 
-    return ret
+    for cp in ccc_above_1:
+        if cp != 0xFE0F:
+            assert (
+                cjk_width_map[cp].table_width() != CharWidthInTable.SPECIAL
+            ), f"U+{cp:X}"
+
+    sorted = to_sorted_ranges(ccc_above_1)
+    return list(filter(lambda range: range not in ligature_transparents, sorted))
 
 
 def make_special_ranges(
@@ -689,7 +801,7 @@ class Table:
         """Destructively converts the indices in this table to the `EffectiveWidth` values of
         their buckets. Assumes that no bucket contains codepoints with different widths.
         """
-        self.entries = list(map(lambda i: int(self.indexed[i].width()), self.entries))
+        self.entries = list(map(lambda i: int(self.indexed[i].width()), self.entries))  # type: ignore
         del self.indexed
 
     def buckets(self):
@@ -828,7 +940,8 @@ def load_text_presentation_sequences() -> list[int]:
 def make_presentation_sequence_table(
     seqs: list[Codepoint],
     width_map: list[CharWidth],
-    spurious_true: set[CharWidth],
+    spurious_true: set[CharWidth] = set(),
+    lsb: int = 10,
 ) -> tuple[list[tuple[int, int]], list[list[int]]]:
     """Generates 2-level lookup table for whether a codepoint might start an emoji variation sequence.
     The first level is a match on all but the 10 LSB, the second level is a 1024-bit bitmap for those 10 LSB.
@@ -836,17 +949,17 @@ def make_presentation_sequence_table(
 
     prefixes_dict = defaultdict(set)
     for cp in seqs:
-        prefixes_dict[cp >> 10].add(cp & 0x3FF)
+        prefixes_dict[cp >> lsb].add(cp & (2**lsb - 1))
 
     msbs: list[int] = list(prefixes_dict.keys())
 
     for cp, width in enumerate(width_map):
-        if width in spurious_true and (cp >> 10) in msbs:
-            prefixes_dict[cp >> 10].add(cp & 0x3FF)
+        if width in spurious_true and (cp >> lsb) in msbs:
+            prefixes_dict[cp >> lsb].add(cp & (2**lsb - 1))
 
     leaves: list[list[int]] = []
     for cps in prefixes_dict.values():
-        leaf = [0] * 128
+        leaf = [0] * (2 ** (lsb - 3))
         for cp in cps:
             idx_in_leaf, bit_shift = divmod(cp, 8)
             leaf[idx_in_leaf] |= 1 << bit_shift
@@ -897,7 +1010,7 @@ def lookup_fns(
 /// However, if you change the *actual structure* of the lookup tables (perhaps by editing the
 /// `make_tables` function in `unicode.py`) you must ensure that this code reflects those changes.
 {cfg}#[inline]
-fn lookup_width{cjk_lo}(c: char) -> (u8, NextCharInfo) {{
+fn lookup_width{cjk_lo}(c: char) -> (u8, WidthInfo) {{
     let cp = c as usize;
 
     let t1_offset = WIDTH_ROOT{cjk_cap}.0[cp >> {TABLE_SPLITS[1]}];
@@ -909,7 +1022,7 @@ fn lookup_width{cjk_lo}(c: char) -> (u8, NextCharInfo) {{
 
     // Each sub-table in WIDTH_LEAVES is 6 bits, but each stored entry is 2 bits.
     // This is accomplished by packing four stored entries into one byte.
-    // So each sub-table is 2**(6-2) == 16 bytes in size.
+    // So each sub-table is 2**(7-2) == 32 bytes in size.
     // Since this is the last table, each entry represents an encoded width.
     let packed_widths = WIDTH_LEAVES.0[usize::from(t2_offset)][cp >> 2 & 0x{(2 ** (TABLE_SPLITS[0] - 2) - 1):X}];
 
@@ -917,7 +1030,7 @@ fn lookup_width{cjk_lo}(c: char) -> (u8, NextCharInfo) {{
     let width = packed_widths >> (2 * (cp & 0b11)) & 0b11;
 
     if width < 3 {{
-        (width, NextCharInfo::Default)
+        (width, WidthInfo::DEFAULT)
     }} else {{
         match c {{
 """
@@ -926,9 +1039,9 @@ fn lookup_width{cjk_lo}(c: char) -> (u8, NextCharInfo) {{
         s += f"            '\\u{{{lo:X}}}'"
         if hi != lo:
             s += f"..='\\u{{{hi:X}}}'"
-        s += f" => ({width.width_alone()}, NextCharInfo::{str(width.value)}),\n"
+        s += f" => ({width.width_alone()}, WidthInfo::{str(width.name)}),\n"
 
-    s += f"""            _ => (2, NextCharInfo::EmojiPresentation),
+    s += f"""            _ => (2, WidthInfo::EMOJI_PRESENTATION),
         }}
     }}
 }}
@@ -958,39 +1071,65 @@ pub fn single_char_width{cjk_lo}(c: char) -> Option<usize> {{
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`.
 /// Ambiguous width characters are treated as {ambig}.
 {cfg}#[inline]
-fn width_in_str{cjk_lo}(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) {{
-    if """
+fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (u8, WidthInfo) {{
+    if next_info.is_emoji_presentation() {{
+        if starts_emoji_presentation_seq(c) {{
+            return (2, WidthInfo::DEFAULT);
+        }} else {{
+            next_info = next_info.unset_emoji_presentation();
+        }}
+    }}"""
 
     if is_cjk:
-        s += """(next_info == NextCharInfo::CombiningLongSolidusOverlay && matches!(c, '<' | '=' | '>'))
-        || (next_info == NextCharInfo::VariationSelector16 && starts_emoji_presentation_seq(c))
-    """
-    else:
-        s += "next_info == NextCharInfo::VariationSelector16 && starts_emoji_presentation_seq(c) "
+        s += """
+    if (matches!(
+        next_info,
+        WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY | WidthInfo::SOLIDUS_OVERLAY_ALEF
+    ) && matches!(c, '<' | '=' | '>'))
+    {
+        return (2, WidthInfo::DEFAULT);
+    }"""
 
-    s += """{
-        (2, NextCharInfo::Default)
-    } else if c <= '\\u{A0}' {
+    s += """
+    if c <= '\\u{A0}' {
         match c {
-            '\\n' => (1, NextCharInfo::LineFeed),
-            '\\r' if next_info == NextCharInfo::LineFeed => (0, NextCharInfo::Default),
-            _ => (1, NextCharInfo::Default),
+            '\\n' => (1, WidthInfo::LINE_FEED),
+            '\\r' if next_info == WidthInfo::LINE_FEED => (0, WidthInfo::DEFAULT),
+            _ => (1, WidthInfo::DEFAULT),
         }
     } else {
         // Fast path
-        if next_info != NextCharInfo::Default {
-            match (next_info, c) {
-                // Hebrew Alef-ZWJ-Lamed ligature
-                (NextCharInfo::HebrewLetterLamed, '\\u{200D}') => {
-                    return (0, NextCharInfo::ZwjHebrewLetterLamed);
-                }
-                (NextCharInfo::ZwjHebrewLetterLamed, '\\u{05D0}') => {
-                    return (0, NextCharInfo::Default);
-                }
+        if next_info != WidthInfo::DEFAULT {
+            if c == '\\u{FE0F}' {
+                return (0, next_info.set_emoji_presentation());
+            }"""
 
+    if not is_cjk:
+        s += """
+            if c == '\\u{FE0E}' {
+                return (0, next_info.set_text_presentation());
+            }
+            if next_info.is_text_presentation() {
+                if starts_non_ideographic_text_presentation_seq(c) {
+                    return (1, WidthInfo::DEFAULT);
+                } else {
+                    next_info = next_info.unset_text_presentation();
+                }
+            }"""
+
+    s += """
+            if next_info.is_ligature_transparent() {
+                if c == '\\u{200D}' {
+                    return (0, next_info.set_zwj_bit());
+                } else if is_ligature_transparent(c) {
+                    return (0, next_info);
+                }
+            }
+
+            match (next_info, c) {
                 // Arabic Lam-Alef ligature
                 (
-                    NextCharInfo::JoiningGroupAlef,
+                    WidthInfo::JOINING_GROUP_ALEF,
                     """
 
     tail = False
@@ -1001,27 +1140,44 @@ fn width_in_str{cjk_lo}(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) 
         s += f"'\\u{{{lo:X}}}'"
         if hi != lo:
             s += f"..='\\u{{{hi:X}}}'"
-    s += """
-                ) => return (0, NextCharInfo::Default),
-                (NextCharInfo::JoiningGroupAlef, _) if is_transparent_zero_width(c) => {
-                     return (0, NextCharInfo::JoiningGroupAlef);
+    s += """,
+                ) => return (0, WidthInfo::DEFAULT),
+                (WidthInfo::JOINING_GROUP_ALEF, _) if is_transparent_zero_width(c) => {
+                    return (0, WidthInfo::JOINING_GROUP_ALEF);
+                }
+
+                // Hebrew Alef-ZWJ-Lamed ligature
+                (WidthInfo::ZWJ_HEBREW_LETTER_LAMED, '\\u{05D0}') => {
+                    return (0, WidthInfo::DEFAULT);
+                }
+
+                // Buginese <a, -i> ZWJ ya ligature
+                (WidthInfo::ZWJ_BUGINESE_LETTER_YA, '\\u{1A17}') => {
+                    return (0, WidthInfo::BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA)
+                }
+                (WidthInfo::BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA, '\\u{1A15}') => {
+                    return (0, WidthInfo::DEFAULT)
                 }
 
                 // Lisu tone letter combinations
-                (NextCharInfo::LisuToneLetterMyaNaJeu, '\\u{A4F8}'..='\\u{A4FB}') => {
-                    return (0, NextCharInfo::Default);
+                (WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU, '\\u{A4F8}'..='\\u{A4FB}') => {
+                    return (0, WidthInfo::DEFAULT);
                 }"""
-
-    if not is_cjk:
+    if is_cjk:
         s += """
-                (NextCharInfo::VariationSelector15, _)
-                    if starts_non_ideographic_text_presentation_seq(c) =>
-                {
-                    return (1, NextCharInfo::Default);
+                (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _) if is_solidus_transparent(c) => {
+                    return (
+                        lookup_width_cjk(c).0,
+                        WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY,
+                    );
+                }
+                (WidthInfo::JOINING_GROUP_ALEF, '\\u{0338}') => {
+                    return (0, WidthInfo::SOLIDUS_OVERLAY_ALEF);
                 }"""
 
     s += f"""
-                _ => (),
+
+                _ => {{}}
             }}
         }}
 
@@ -1032,7 +1188,7 @@ fn width_in_str{cjk_lo}(c: char, next_info: NextCharInfo) -> (u8, NextCharInfo) 
 {cfg}#[inline]
 pub fn str_width{cjk_lo}(s: &str) -> usize {{
     s.chars()
-        .rfold((0, NextCharInfo::Default), |(sum, next_info), c| {{
+        .rfold((0, WidthInfo::DEFAULT), |(sum, next_info), c| {{
             let (add, info) = width_in_str{cjk_lo}(c, next_info);
             (sum + (usize::from(add)), info)
         }})
@@ -1053,6 +1209,8 @@ def emit_module(
     text_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
     joining_group_lam: list[tuple[Codepoint, Codepoint]],
     non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
+    ligature_transparent: list[tuple[Codepoint, Codepoint]],
+    solidus_transparent: list[tuple[Codepoint, Codepoint]],
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
     If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
@@ -1073,21 +1231,77 @@ def emit_module(
 
 // NOTE: The following code was generated by "scripts/unicode.py", do not edit directly
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum NextCharInfo {
-    #[default]
-    Default,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct WidthInfo(u8);
+
+impl WidthInfo {
+    /// No special handling necessary
+    const DEFAULT: Self = Self(0);
 """
         )
 
         for variant in CharWidth:
             if variant.table_width() == CharWidthInTable.SPECIAL:
-                if variant == CharWidth.COMBINING_LONG_SOLIDUS_OVERLAY:
+                if variant in [
+                    CharWidth.COMBINING_LONG_SOLIDUS_OVERLAY,
+                    CharWidth.SOLIDUS_OVERLAY_ALEF,
+                ]:
                     module.write('    #[cfg(feature = "cjk")]\n')
-                module.write(f"    {str(variant.value)},\n")
+                module.write(
+                    f"    const {variant.name}: Self = Self(0b{variant.value:08b});\n"
+                )
 
         module.write(
-            f"""}}
+            f"""
+    /// Whether this width mode is ligature_transparent
+    /// (has 3rd MSB set.)
+    fn is_ligature_transparent(self) -> bool {{
+        (self.0 & 0b0010_0000) == 0b0010_0000
+    }}
+
+    /// Sets 4th MSB.
+    fn set_zwj_bit(self) -> Self {{
+        Self(self.0 | 0b001_0000)
+    }}
+
+    /// Has top bit set
+    fn is_emoji_presentation(self) -> bool {{
+        (self.0 & 0b1000_0000) == 0b1000_0000
+    }}
+
+    /// Set top bit
+    fn set_emoji_presentation(self) -> Self {{
+        if self.0 >= 0b0000_1111 {{
+            Self(self.0 | 0b1000_0000)
+        }} else {{
+            Self(0b1000_0000)
+        }}
+    }}
+
+    /// Clear top bit
+    fn unset_emoji_presentation(self) -> Self {{
+        Self(self.0 & 0b0111_1111)
+    }}
+
+    /// Has 2nd bit set
+    fn is_text_presentation(self) -> bool {{
+        (self.0 & 0b0100_0000) == 0b0100_0000
+    }}
+
+    /// Set 2nd bit
+    fn set_text_presentation(self) -> Self {{
+        if self.0 >= 0b0000_1111 {{
+            Self(self.0 | 0b0100_0000)
+        }} else {{
+            Self(0b0100_0000)
+        }}
+    }}
+
+    /// Clear 2nd bit
+    fn unset_text_presentation(self) -> Self {{
+        Self(self.0 & 0b1011_1111)
+    }}
+}}
 
 /// The version of [Unicode](http://www.unicode.org/)
 /// that this version of unicode-width is based on.
@@ -1104,19 +1318,23 @@ pub const UNICODE_VERSION: (u8, u8, u8) = {unicode_version};
         module.write(
             """
 /// Whether this character is a zero-width character with
-/// `Joining_Type=Transparent`. Used by the Alef-Lamed ligatures
+/// `Joining_Type=Transparent`. Used by the Alef-Lamed ligatures.
+/// See also [`is_ligature_transparent`], a near-subset of this (only ZWJ is excepted)
+/// which is transparent for non-Arabic ligatures.
 fn is_transparent_zero_width(c: char) -> bool {
     use core::cmp::Ordering;
-
     if lookup_width(c).0 != 0 {
         // Not zero-width
         false
     } else {
+        let cp: u32 = c.into();
         NON_TRANSPARENT_ZERO_WIDTHS
             .binary_search_by(|&(lo, hi)| {
-                if c < lo {
+                let lo = u32::from_le_bytes([lo[0], lo[1], lo[2], 0]);
+                let hi = u32::from_le_bytes([hi[0], hi[1], hi[2], 0]);
+                if cp < lo {
                     Ordering::Greater
-                } else if c > hi {
+                } else if cp > hi {
                     Ordering::Less
                 } else {
                     Ordering::Equal
@@ -1124,6 +1342,48 @@ fn is_transparent_zero_width(c: char) -> bool {
             })
             .is_err()
     }
+}
+
+/// Whether this character is a default-ignorable combining mark
+/// or ZWJ. These characters won't interrupt non-Arabic ligatures.
+fn is_ligature_transparent(c: char) -> bool {
+    matches!(c, """
+        )
+
+        tail = False
+        for lo, hi in ligature_transparent:
+            if tail:
+                module.write(" | ")
+            tail = True
+            module.write(f"'\\u{{{lo:X}}}'")
+            if hi != lo:
+                module.write(f"..='\\u{{{hi:X}}}'")
+
+        module.write(
+            """)
+}
+
+/// Whether this character is transparent wrt the effect of
+/// U+0338 COMBINING LONG SOLIDUS OVERLAY
+/// on its base character.
+#[cfg(feature = "cjk")]
+fn is_solidus_transparent(c: char) -> bool {
+    use core::cmp::Ordering;
+    let cp: u32 = c.into();
+    is_ligature_transparent(c)
+        || SOLIDUS_TRANSPARENT
+            .binary_search_by(|&(lo, hi)| {
+                let lo = u32::from_le_bytes([lo[0], lo[1], lo[2], 0]);
+                let hi = u32::from_le_bytes([hi[0], hi[1], hi[2], 0]);
+                if cp < lo {
+                    Ordering::Greater
+                } else if cp > hi {
+                    Ordering::Less
+                } else {
+                    Ordering::Equal
+                }
+            })
+            .is_ok()
 }
 
 /// Whether this character forms an [emoji presentation sequence]
@@ -1260,12 +1520,34 @@ static {table.name}: Align{table.align}<[[u8; {table.bytes_per_row}]; {table.nam
             f"""
 /// Sorted list of codepoint ranges (inclusive)
 /// that are zero-width but not `Joining_Type=Transparent`
-static NON_TRANSPARENT_ZERO_WIDTHS: [(char, char); {len(non_transparent_zero_widths)}] = [
+/// FIXME: can we get better compression?
+static NON_TRANSPARENT_ZERO_WIDTHS: [([u8; 3], [u8; 3]); {len(non_transparent_zero_widths)}] = [
 """
         )
 
         for lo, hi in non_transparent_zero_widths:
-            module.write(f"    ('\\u{{{lo:X}}}', '\\u{{{hi:X}}}'),\n")
+            module.write(
+                f"    ([0x{lo & 0xFF:02X}, 0x{lo >> 8 & 0xFF:02X}, 0x{lo >> 16:02X}], [0x{hi & 0xFF:02X}, 0x{hi >> 8 & 0xFF:02X}, 0x{hi >> 16:02X}]),\n"
+            )
+
+        # solidus transparent table
+
+        module.write(
+            f"""];
+
+/// Sorted list of codepoint ranges (inclusive)
+/// that don't affect how the combining solidus applies
+/// (mostly ccc > 1).
+/// FIXME: can we get better compression?
+#[cfg(feature = "cjk")]
+static SOLIDUS_TRANSPARENT: [([u8; 3], [u8; 3]); {len(solidus_transparent)}] = [
+"""
+        )
+
+        for lo, hi in solidus_transparent:
+            module.write(
+                f"    ([0x{lo & 0xFF:02X}, 0x{lo >> 8 & 0xFF:02X}, 0x{lo >> 16:02X}], [0x{hi & 0xFF:02X}, 0x{hi >> 8 & 0xFF:02X}, 0x{hi >> 16:02X}]),\n"
+            )
 
         # emoji table
 
@@ -1328,7 +1610,7 @@ def main(module_path: str):
 
     emoji_presentations = load_emoji_presentation_sequences()
     emoji_presentation_table = make_presentation_sequence_table(
-        emoji_presentations, width_map, set()
+        emoji_presentations, width_map
     )
 
     text_presentations = load_text_presentation_sequences()
@@ -1340,6 +1622,8 @@ def main(module_path: str):
 
     joining_group_lam = load_joining_group_lam()
     non_transparent_zero_widths = load_non_transparent_zero_widths(width_map)
+    ligature_transparent = load_ligature_transparent()
+    solidus_transparent = load_solidus_transparent(ligature_transparent, cjk_width_map)
 
     # Download normalization test file for use by tests
     fetch_open("NormalizationTest.txt", "../tests/")
@@ -1355,7 +1639,7 @@ def main(module_path: str):
         ("Emoji", emoji_presentation_table),
         ("Text", text_presentation_table),
     ]:
-        index_size = len(table[0]) * 4
+        index_size = len(table[0])
         print(f"{s} presentation index size: {index_size} bytes")
         total_size += index_size
         leaves_size = len(table[1]) * len(table[1][0])
@@ -1374,6 +1658,8 @@ def main(module_path: str):
         text_presentation_table=text_presentation_table,
         joining_group_lam=joining_group_lam,
         non_transparent_zero_widths=non_transparent_zero_widths,
+        ligature_transparent=ligature_transparent,
+        solidus_transparent=solidus_transparent,
     )
     print(f'Wrote to "{module_path}"')
 
