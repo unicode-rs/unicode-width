@@ -415,3 +415,11 @@ fn test_old_turkic_ligature() {
     assert_width!("\u{10C03}\u{200D}\u{10C32}", 2, 2);
     assert_width!("\u{200D}\u{10C32}", 1, 1);
 }
+
+#[test]
+fn test_emoji_modifier() {
+    assert_width!("\u{1F46A}", 2, 2);
+    assert_width!("\u{1F3FB}", 2, 2);
+    assert_width!("\u{1F46A}\u{1F3FB}", 2, 2);
+    assert_width!("\u{1F46A}\u{200D}\u{200D}\u{1F3FB}", 4, 4);
+}

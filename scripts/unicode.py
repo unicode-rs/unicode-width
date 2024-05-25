@@ -491,7 +491,7 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
     regional_indicators = []
     load_property(
         "PropList.txt",
-        r"Regional_Indicator",
+        "Regional_Indicator",
         lambda cp: regional_indicators.append(cp),
     )
 
@@ -499,7 +499,7 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
     emoji_modifiers = []
     load_property(
         "emoji/emoji-data.txt",
-        r"Emoji_Modifier",
+        "Emoji_Modifier",
         lambda cp: emoji_modifiers.append(cp),
     )
 
@@ -507,7 +507,7 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
     emoji_presentation = []
     load_property(
         "emoji/emoji-data.txt",
-        r"Emoji_Presentation",
+        "Emoji_Presentation",
         lambda cp: emoji_presentation.append(cp),
     )
 
@@ -523,8 +523,8 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
         ([0xFE0F], CharWidth.VARIATION_SELECTOR_16),
         ([0x10C03], CharWidth.OLD_TURKIC_LETTER_ORKHON_I),
         (regional_indicators, CharWidth.REGIONAL_INDICATOR),
-        (emoji_modifiers, CharWidth.EMOJI_MODIFIER),
         (emoji_presentation, CharWidth.EMOJI_PRESENTATION),
+        (emoji_modifiers, CharWidth.EMOJI_MODIFIER),
     ]:
         for cp in cps:
             not_ea[cp] = width
@@ -888,8 +888,8 @@ def make_tables(
     return [root_table, cjk_root_table, middle_table, leaves_table]
 
 
-def load_emoji_presentation_sequences() -> list[int]:
-    """Outputs a list of character ranages, corresponding to all the valid characters for starting
+def load_emoji_presentation_sequences() -> list[Codepoint]:
+    """Outputs a list of cpodepoints, corresponding to all the valid characters for starting
     an emoji presentation sequence."""
 
     with fetch_open("emoji/emoji-variation-sequences.txt") as sequences:
@@ -904,8 +904,8 @@ def load_emoji_presentation_sequences() -> list[int]:
     return codepoints
 
 
-def load_text_presentation_sequences() -> list[int]:
-    """Outputs a list of character ranages, corresponding to all the valid characters
+def load_text_presentation_sequences() -> list[Codepoint]:
+    """Outputs a list of codepoints, corresponding to all the valid characters
     whose widths change with a text presentation sequence."""
 
     text_presentation_seq_codepoints = set()
@@ -935,6 +935,19 @@ def load_text_presentation_sequences() -> list[int]:
 
     codepoints.sort()
     return codepoints
+
+
+def load_emoji_modifier_bases() -> list[Codepoint]:
+    """Outputs a list of codepoints, corresponding to all the valid characters
+    whose widths change with a text presentation sequence."""
+
+    ret = []
+    load_property(
+        "emoji/emoji-data.txt",
+        "Emoji_Modifier_Base",
+        lambda cp: ret.append(cp),
+    )
+    return ret
 
 
 def make_presentation_sequence_table(
@@ -1193,6 +1206,11 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
 
     s += f"""
 
+                // Emoji modifier
+                (WidthInfo::EMOJI_MODIFIER, _) if is_emoji_modifier_base(c) => {{
+                    return (0, WidthInfo::EMOJI_PRESENTATION);
+                }}
+
                 _ => {{}}
             }}
         }}
@@ -1227,6 +1245,7 @@ def emit_module(
     special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], CharWidth]],
     emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
     text_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
+    emoji_modifier_table: tuple[list[tuple[int, int]], list[list[int]]],
     joining_group_lam: list[tuple[Codepoint, Codepoint]],
     non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
     ligature_transparent: list[tuple[Codepoint, Codepoint]],
@@ -1334,6 +1353,7 @@ pub const UNICODE_VERSION: (u8, u8, u8) = {unicode_version};
 
         emoji_presentation_idx, emoji_presentation_leaves = emoji_presentation_table
         text_presentation_idx, text_presentation_leaves = text_presentation_table
+        emoji_modifier_idx, emoji_modifier_leaves = emoji_modifier_table
 
         module.write(
             """
@@ -1433,12 +1453,8 @@ pub fn starts_emoji_presentation_seq(c: char) -> bool {
     // Use the 3 LSB of `cp` to index into `leaf_byte`.
     ((leaf_byte >> (cp & 7)) & 1) == 1
 }
-"""
-        )
 
-        module.write(
-            """
-/// Returns `true` iff `c` has default emoji presentation, but forms a [text presentation sequence]
+/// Returns `true` if `c` has default emoji presentation, but forms a [text presentation sequence]
 /// (https://www.unicode.org/reports/tr51/#def_text_presentation_sequence)
 /// when followed by `'\\u{FEOE}'`, and is not ideographic.
 /// Such sequences are considered to have width 1.
@@ -1463,6 +1479,30 @@ pub fn starts_non_ideographic_text_presentation_seq(c: char) -> bool {
     // and use them to index into `leaf_row`.
     let idx_within_leaf = usize::try_from((cp >> 3) & 0x7F).unwrap();
     let leaf_byte = TEXT_PRESENTATION_LEAVES.0[idx_of_leaf][idx_within_leaf];
+    // Use the 3 LSB of `cp` to index into `leaf_byte`.
+    ((leaf_byte >> (cp & 7)) & 1) == 1
+}
+
+/// Returns `true` if `c` is an `Emoji_Modifier_Base`.
+#[inline]
+pub fn is_emoji_modifier_base(c: char) -> bool {
+    let cp: u32 = c.into();
+    // First level of lookup uses all but 10 LSB
+    let top_bits = cp >> 10;
+    let idx_of_leaf: usize = match top_bits {
+"""
+        )
+
+        for msbs, i in emoji_modifier_idx:
+            module.write(f"        {msbs} => {i},\n")
+
+        module.write(
+            """        _ => return false,
+    };
+    // Extract the 3-9th (0-indexed) least significant bits of `cp`,
+    // and use them to index into `leaf_row`.
+    let idx_within_leaf = usize::try_from((cp >> 3) & 0x7F).unwrap();
+    let leaf_byte = EMOJI_MODIFIER_LEAVES.0[idx_of_leaf][idx_within_leaf];
     // Use the 3 LSB of `cp` to index into `leaf_byte`.
     ((leaf_byte >> (cp & 7)) & 1) == 1
 }
@@ -1610,6 +1650,25 @@ static TEXT_PRESENTATION_LEAVES: Align128<[[u8; 128]; {len(text_presentation_lea
 
         module.write("]);\n")
 
+        module.write(
+            f"""
+/// Array of 1024-bit bitmaps. Index into the correct bitmap with the 10 LSB of your codepoint
+/// to get whether it can start a text presentation sequence.
+// FIXME: compress this
+static EMOJI_MODIFIER_LEAVES: Align128<[[u8; 128]; {len(emoji_modifier_leaves)}]> = Align128([
+"""
+        )
+        for leaf in emoji_modifier_leaves:
+            module.write("    [\n")
+            for row in batched(leaf, 15):
+                module.write("       ")
+                for entry in row:
+                    module.write(f" 0x{entry:02X},")
+                module.write("\n")
+            module.write("    ],\n")
+
+        module.write("]);\n")
+
 
 def main(module_path: str):
     """Obtain character data from the latest version of Unicode, transform it into a multi-level
@@ -1640,6 +1699,12 @@ def main(module_path: str):
         {CharWidth.NARROW},
     )
 
+    emoji_modifier_bases = load_emoji_modifier_bases()
+    emoji_modifier_table = make_presentation_sequence_table(
+        emoji_modifier_bases,
+        width_map,
+    )
+
     joining_group_lam = load_joining_group_lam()
     non_transparent_zero_widths = load_non_transparent_zero_widths(width_map)
     ligature_transparent = load_ligature_transparent()
@@ -1656,14 +1721,15 @@ def main(module_path: str):
         total_size += size_bytes
 
     for s, table in [
-        ("Emoji", emoji_presentation_table),
-        ("Text", text_presentation_table),
+        ("Emoji presentation", emoji_presentation_table),
+        ("Text presentation", text_presentation_table),
+        ("Emoji modifier", emoji_modifier_table),
     ]:
         index_size = len(table[0])
-        print(f"{s} presentation index size: {index_size} bytes")
+        print(f"{s} index size: {index_size} bytes")
         total_size += index_size
         leaves_size = len(table[1]) * len(table[1][0])
-        print(f"{s} presentation leaves size: {leaves_size} bytes")
+        print(f"{s} leaves size: {leaves_size} bytes")
         total_size += leaves_size
     print("------------------------")
     print(f"  Total size: {total_size} bytes")
@@ -1676,6 +1742,7 @@ def main(module_path: str):
         special_ranges_cjk=cjk_special_ranges,
         emoji_presentation_table=emoji_presentation_table,
         text_presentation_table=text_presentation_table,
+        emoji_modifier_table=emoji_modifier_table,
         joining_group_lam=joining_group_lam,
         non_transparent_zero_widths=non_transparent_zero_widths,
         ligature_transparent=ligature_transparent,
