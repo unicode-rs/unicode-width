@@ -1441,7 +1441,7 @@ pub fn starts_emoji_presentation_seq(c: char) -> bool {
         )
 
         for msbs, i in emoji_presentation_idx:
-            module.write(f"        {msbs} => {i},\n")
+            module.write(f"        0x{msbs:X} => {i},\n")
 
         module.write(
             """        _ => return false,
@@ -1470,7 +1470,7 @@ pub fn starts_non_ideographic_text_presentation_seq(c: char) -> bool {
         )
 
         for msbs, i in text_presentation_idx:
-            module.write(f"        {msbs} => {i},\n")
+            module.write(f"        0x{msbs:X} => {i},\n")
 
         module.write(
             """        _ => return false,
@@ -1487,25 +1487,28 @@ pub fn starts_non_ideographic_text_presentation_seq(c: char) -> bool {
 #[inline]
 pub fn is_emoji_modifier_base(c: char) -> bool {
     let cp: u32 = c.into();
-    // First level of lookup uses all but 10 LSB
-    let top_bits = cp >> 10;
+    // First level of lookup uses all but 7 LSB
+    let top_bits = cp >> 7;
     let idx_of_leaf: usize = match top_bits {
 """
         )
 
         for msbs, i in emoji_modifier_idx:
-            module.write(f"        {msbs} => {i},\n")
+            module.write(f"        0x{msbs:X} => {i},\n")
 
         module.write(
             """        _ => return false,
     };
-    // Extract the 3-9th (0-indexed) least significant bits of `cp`,
+    // Extract the 3-6th (0-indexed) least significant bits of `cp`,
     // and use them to index into `leaf_row`.
-    let idx_within_leaf = usize::try_from((cp >> 3) & 0x7F).unwrap();
+    let idx_within_leaf = usize::try_from((cp >> 3) & 0xF).unwrap();
     let leaf_byte = EMOJI_MODIFIER_LEAVES.0[idx_of_leaf][idx_within_leaf];
     // Use the 3 LSB of `cp` to index into `leaf_byte`.
     ((leaf_byte >> (cp & 7)) & 1) == 1
 }
+
+#[repr(align(16))]
+struct Align16<T>(T);
 
 #[repr(align(32))]
 struct Align32<T>(T);
@@ -1652,10 +1655,9 @@ static TEXT_PRESENTATION_LEAVES: Align128<[[u8; 128]; {len(text_presentation_lea
 
         module.write(
             f"""
-/// Array of 1024-bit bitmaps. Index into the correct bitmap with the 10 LSB of your codepoint
-/// to get whether it can start a text presentation sequence.
-// FIXME: compress this
-static EMOJI_MODIFIER_LEAVES: Align128<[[u8; 128]; {len(emoji_modifier_leaves)}]> = Align128([
+/// Array of 128-bit bitmaps. Index into the correct bitmap with the 7 LSB of your codepoint
+/// to get whether it can start an emoji modifier sequence.
+static EMOJI_MODIFIER_LEAVES: Align16<[[u8; 16]; {len(emoji_modifier_leaves)}]> = Align16([
 """
         )
         for leaf in emoji_modifier_leaves:
@@ -1701,8 +1703,7 @@ def main(module_path: str):
 
     emoji_modifier_bases = load_emoji_modifier_bases()
     emoji_modifier_table = make_presentation_sequence_table(
-        emoji_modifier_bases,
-        width_map,
+        emoji_modifier_bases, width_map, lsb=7
     )
 
     joining_group_lam = load_joining_group_lam()
@@ -1725,7 +1726,7 @@ def main(module_path: str):
         ("Text presentation", text_presentation_table),
         ("Emoji modifier", emoji_modifier_table),
     ]:
-        index_size = len(table[0])
+        index_size = len(table[0]) * math.ceil(math.log(table[0][-1][0], 256))
         print(f"{s} index size: {index_size} bytes")
         total_size += index_size
         leaves_size = len(table[1]) * len(table[1][0])
