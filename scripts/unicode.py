@@ -1731,6 +1731,13 @@ def main(module_path: str):
         leaves_size = len(table[1]) * len(table[1][0])
         print(f"{s} leaves size: {leaves_size} bytes")
         total_size += leaves_size
+    for s, table in [
+        ("Non transparent zero width", non_transparent_zero_widths),
+        ("Solidus transparent", solidus_transparent),
+    ]:
+        table_size = 6 * len(table)
+        print(f"{s} table size: {table_size} bytes")
+        total_size += table_size
     print("------------------------")
     print(f"  Total size: {total_size} bytes")
 
