@@ -545,3 +545,31 @@ fn test_emoji_zwj() {
         3,
     );
 }
+
+// Test traits are unsealed
+
+#[cfg(feature = "cjk")]
+#[allow(dead_code)]
+struct Foo;
+
+#[cfg(feature = "cjk")]
+impl UnicodeWidthChar for Foo {
+    fn width(self) -> Option<usize> {
+        Some(0)
+    }
+
+    fn width_cjk(self) -> Option<usize> {
+        Some(0)
+    }
+}
+
+#[cfg(feature = "cjk")]
+impl UnicodeWidthStr for Foo {
+    fn width(&self) -> usize {
+        0
+    }
+
+    fn width_cjk(&self) -> usize {
+        0
+    }
+}
