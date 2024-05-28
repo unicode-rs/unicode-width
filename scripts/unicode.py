@@ -152,121 +152,183 @@ class CharWidthInTable(enum.IntEnum):
     SPECIAL = 3
 
 
-class CharWidth(enum.IntEnum):
-    """The integer values of these variants have special meaning:
+class WidthState(enum.IntEnum):
+    """
+    Width calculation proceeds according to a state machine.
+    We iterate over the characters of the string from back to front;
+    the next character encountered determines the transition to take.
+
+    The integer values of these variants have special meaning:
     - Top bit: whether this is Vs16
     - 2nd from top: whether this is Vs15
-    - 3rd from top: whether this is unaffected by ligature-transparent
-    - 4th bit: if 3rd is set but this one is not, then this is a ZWJ ligature state
+    - 3rd bit from top: whether this is transparent to emoji/text presentation
+      (if set, should also set 4th)
+    - 4th bit: whether to set top bit on emoji presentation.
+      If this is set but 3rd is not, the width mode is related to zwj sequences
+    - 5th from top: whether this is unaffected by ligature-transparent
+    - 6th bit: if 4th is set but this one is not, then this is a ZWJ ligature state
       where no ZWJ has been encountered yet; encountering one flips this on"""
 
     # BASIC WIDTHS
 
-    ZERO = 0x100
+    ZERO = 0x1_0000
     "Zero columns wide."
 
-    NARROW = 0x101
+    NARROW = 0x1_0001
     "One column wide."
 
-    WIDE = 0x102
+    WIDE = 0x1_0002
     "Two columns wide."
 
-    # TIGHTLY DEFINED SEQUENCES
-
     # \r\n
-    LINE_FEED = 0b0000_0011
+    LINE_FEED = 0b0000_0000_0000_0001
     "\\n (CRLF has width 1)"
 
+    # EMOJI
+
     # Emoji skintone modifiers
-    EMOJI_MODIFIER = 0b0000_0100
+    EMOJI_MODIFIER = 0b0000_0000_0000_0010
     "`Emoji_Modifier`"
 
     # Emoji ZWJ sequences
 
-    REGIONAL_INDICATOR = 0b0000_0101
-    "`Regional_Indicator` (for ZWJ sequences)"
+    REGIONAL_INDICATOR = 0b0000_0000_0000_0011
+    "`Regional_Indicator`"
 
-    EMOJI_PRESENTATION = 0b0000_0110
+    SEVERAL_REGIONAL_INDICATOR = 0b0000_0000_0000_0100
+    "At least two `Regional_Indicator`in sequence"
+
+    EMOJI_PRESENTATION = 0b0000_0000_0000_0101
     "`Emoji_Presentation`"
+
+    ZWJ_EMOJI_PRESENTATION = 0b0001_0000_0000_0110
+    "\\u200D `Emoji_Presentation`"
+
+    VS16_ZWJ_EMOJI_PRESENTATION = 0b1001_0000_0000_0110
+    "\\uFE0F \\u200D `Emoji_Presentation`"
+
+    KEYCAP_ZWJ_EMOJI_PRESENTATION = 0b0001_0000_0000_0111
+    "\\u20E3 \\u200D `Emoji_Presentation`"
+
+    VS16_KEYCAP_ZWJ_EMOJI_PRESENTATION = 0b1001_0000_0000_0111
+    "\\uFE0F \\u20E3 \\u200D `Emoji_Presentation`"
+
+    REGIONAL_INDICATOR_ZWJ_PRESENTATION = 0b0000_0000_0000_1001
+    "`Regional_Indicator` \\u200D `Emoji_Presentation`"
+
+    EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION = 0b0000_0000_0000_1010
+    "(`Regional_Indicator` `Regional_Indicator`)+ \\u200D `Emoji_Presentation`"
+
+    ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION = 0b0000_0000_0000_1011
+    "(`Regional_Indicator` `Regional_Indicator`)+ `Regional_Indicator` \\u200D `Emoji_Presentation`"
+
+    TAG_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_0000
+    "\\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_D1_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_0001
+    "\\uE0030..=\\uE0039 \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_D2_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_0010
+    "(\\uE0030..=\\uE0039){2} \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_D3_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_0011
+    "(\\uE0030..=\\uE0039){3} \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_A1_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1001
+    "\\uE0061..=\\uE007A \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_A2_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1010
+    "(\\uE0061..=\\uE007A){2} \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_A3_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1011
+    "(\\uE0061..=\\uE007A){3} \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_A4_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1100
+    "(\\uE0061..=\\uE007A){4} \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_A5_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1101
+    "(\\uE0061..=\\uE007A){35} \\uE007F \\u200D `Emoji_Presentation`"
+
+    TAG_A6_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1110
+    "(\\uE0061..=\\uE007A){6} \\uE007F \\u200D `Emoji_Presentation`"
+
 
     # VARIATION SELECTORS
 
     # Text presentation sequences (not CJK)
-    VARIATION_SELECTOR_15 = 0b0100_0000
+    VARIATION_SELECTOR_15 = 0b0100_0000_0000_0000
     "\\uFE0E (text presentation sequences)"
 
     # Emoji presentation sequences
-    VARIATION_SELECTOR_16 = 0b1000_0000
+    VARIATION_SELECTOR_16 = 0b1000_0000_0000_0000
     "\\uFE0F (emoji presentation sequences)"
-
-    # --- Width modes below this line can have 1 of their top 2 bits set to indicate presence of a VS ---
 
     # ARABIC LAM ALEF
 
-    JOINING_GROUP_ALEF = 0b0000_1111
+    JOINING_GROUP_ALEF = 0b0011_0000_1111_1111
     "Joining_Group=Alef (Arabic Lam-Alef ligature)"
 
     # COMBINING SOLIDUS (CJK only)
 
-    COMBINING_LONG_SOLIDUS_OVERLAY = 0b0011_1111
+    COMBINING_LONG_SOLIDUS_OVERLAY = 0b0011_1100_1111_1111
     "\\u0338 (CJK only, makes <, =, > width 2)"
 
     # SOLIDUS + ALEF (solidus is Joining_Type=Transparent)
-    SOLIDUS_OVERLAY_ALEF = 0b0010_1111
+    SOLIDUS_OVERLAY_ALEF = 0b0011_1000_1111_1111
     "\\u0338 followed by Joining_Group=Alef"
 
     # SCRIPT ZWJ LIGATURES
 
     # Hebrew alef lamed
 
-    HEBREW_LETTER_LAMED = 0b0010_0000
+    HEBREW_LETTER_LAMED = 0b0011_1000_0000_0000
     "\\u05DC (Alef-ZWJ-Lamed ligature)"
 
-    ZWJ_HEBREW_LETTER_LAMED = 0b0011_0000
+    ZWJ_HEBREW_LETTER_LAMED = 0b0011_1100_0000_0000
     "\\u200D\\u05DC (Alef-ZWJ-Lamed ligature)"
 
     # Buginese <a -i> ya
 
-    BUGINESE_LETTER_YA = 0b0010_0001
+    BUGINESE_LETTER_YA = 0b0011_1000_0000_0001
     "\\u1A10 (<a, -i> + ya ligature)"
 
-    ZWJ_BUGINESE_LETTER_YA = 0b0011_0001
+    ZWJ_BUGINESE_LETTER_YA = 0b0011_1100_0000_0001
     "\\u200D\\u1A10 (<a, -i> + ya ligature)"
 
-    BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA = 0b0011_0010
+    BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA = 0b0011_1100_0000_0010
     "\\u1A17\\u200D\\u1A10 (<a, -i> + ya ligature)"
 
     # Tifinagh bi-consonants
 
-    TIFINAGH_CONSONANT = 0b0010_0011
+    TIFINAGH_CONSONANT = 0b0011_1000_0000_0011
     "\\u2D31..=\\u2D65 or \\u2D6F (joined by ZWJ or \\u2D7F TIFINAGH CONSONANT JOINER)"
 
-    ZWJ_TIFINAGH_CONSONANT = 0b0011_0011
+    ZWJ_TIFINAGH_CONSONANT = 0b0011_1100_0000_0011
     "ZWJ then \\u2D31..=\\u2D65 or \\u2D6F"
 
-    TIFINAGH_JOINER_CONSONANT = 0b0011_0100
+    TIFINAGH_JOINER_CONSONANT = 0b0011_1100_0000_0100
     "\\u2D7F then \\u2D31..=\\u2D65 or \\u2D6F"
 
     # Lisu tone letters
-    LISU_TONE_LETTER_MYA_NA_JEU = 0b0011_0101
+    LISU_TONE_LETTER_MYA_NA_JEU = 0b0011_1100_0000_0101
     "\\uA4FC or \\uA4FD (https://www.unicode.org/versions/Unicode15.0.0/ch18.pdf#G42078)"
 
     # Old Turkic orkhon ec - orkhon i
 
-    OLD_TURKIC_LETTER_ORKHON_I = 0b0010_0110
+    OLD_TURKIC_LETTER_ORKHON_I = 0b0011_1000_0000_0110
     "\\u10C03 (ORKHON EC-ZWJ-ORKHON I ligature)"
 
-    ZWJ_OLD_TURKIC_LETTER_ORKHON_I = 0b0011_0110
+    ZWJ_OLD_TURKIC_LETTER_ORKHON_I = 0b0011_1100_0000_0110
     "\\u10C03 (ORKHON EC-ZWJ-ORKHON I ligature)"
 
     def table_width(self) -> CharWidthInTable:
         "The width of a character as stored in the lookup tables."
         match self:
-            case CharWidth.ZERO:
+            case WidthState.ZERO:
                 return CharWidthInTable.ZERO
-            case CharWidth.NARROW:
+            case WidthState.NARROW:
                 return CharWidthInTable.ONE
-            case CharWidth.WIDE:
+            case WidthState.WIDE:
                 return CharWidthInTable.TWO
             case _:
                 return CharWidthInTable.SPECIAL
@@ -275,21 +337,23 @@ class CharWidth(enum.IntEnum):
         "The width of a character with this type when it appears alone."
         match self:
             case (
-                CharWidth.ZERO
-                | CharWidth.COMBINING_LONG_SOLIDUS_OVERLAY
-                | CharWidth.VARIATION_SELECTOR_15
-                | CharWidth.VARIATION_SELECTOR_16
+                WidthState.ZERO
+                | WidthState.COMBINING_LONG_SOLIDUS_OVERLAY
+                | WidthState.VARIATION_SELECTOR_15
+                | WidthState.VARIATION_SELECTOR_16
             ):
                 return 0
             case (
-                CharWidth.WIDE | CharWidth.EMOJI_MODIFIER | CharWidth.EMOJI_PRESENTATION
+                WidthState.WIDE
+                | WidthState.EMOJI_MODIFIER
+                | WidthState.EMOJI_PRESENTATION
             ):
                 return 2
             case _:
                 return 1
 
 
-assert len(set([v.value for v in CharWidth])) == len([v.value for v in CharWidth])
+assert len(set([v.value for v in WidthState])) == len([v.value for v in WidthState])
 
 
 def load_east_asian_widths() -> list[EastAsianWidth]:
@@ -454,7 +518,7 @@ def load_zero_widths() -> list[bool]:
     return zw_map
 
 
-def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
+def load_width_maps() -> tuple[list[WidthState], list[WidthState]]:
     """Load complete width table, including characters needing special handling.
     (Returns 2 tables, one for East Asian and one for not.)"""
 
@@ -466,18 +530,18 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
 
     for eaw, zw in zip(eaws, zws):
         if zw:
-            not_ea.append(CharWidth.ZERO)
-            ea.append(CharWidth.ZERO)
+            not_ea.append(WidthState.ZERO)
+            ea.append(WidthState.ZERO)
         else:
             if eaw == EastAsianWidth.WIDE:
-                not_ea.append(CharWidth.WIDE)
+                not_ea.append(WidthState.WIDE)
             else:
-                not_ea.append(CharWidth.NARROW)
+                not_ea.append(WidthState.NARROW)
 
             if eaw == EastAsianWidth.NARROW:
-                ea.append(CharWidth.NARROW)
+                ea.append(WidthState.NARROW)
             else:
-                ea.append(CharWidth.WIDE)
+                ea.append(WidthState.WIDE)
 
     # Joining_Group=Alef (Arabic Lam-Alef ligature)
     alef_joining = []
@@ -512,29 +576,29 @@ def load_width_maps() -> tuple[list[CharWidth], list[CharWidth]]:
     )
 
     for cps, width in [
-        ([0x0A], CharWidth.LINE_FEED),
-        ([0x05DC], CharWidth.HEBREW_LETTER_LAMED),
-        (alef_joining, CharWidth.JOINING_GROUP_ALEF),
-        ([0x1A10], CharWidth.BUGINESE_LETTER_YA),
-        (range(0x2D31, 0x2D66), CharWidth.TIFINAGH_CONSONANT),
-        ([0x2D6F], CharWidth.TIFINAGH_CONSONANT),
-        ([0xA4FC], CharWidth.LISU_TONE_LETTER_MYA_NA_JEU),
-        ([0xA4FD], CharWidth.LISU_TONE_LETTER_MYA_NA_JEU),
-        ([0xFE0F], CharWidth.VARIATION_SELECTOR_16),
-        ([0x10C03], CharWidth.OLD_TURKIC_LETTER_ORKHON_I),
-        (regional_indicators, CharWidth.REGIONAL_INDICATOR),
-        (emoji_presentation, CharWidth.EMOJI_PRESENTATION),
-        (emoji_modifiers, CharWidth.EMOJI_MODIFIER),
+        ([0x0A], WidthState.LINE_FEED),
+        ([0x05DC], WidthState.HEBREW_LETTER_LAMED),
+        (alef_joining, WidthState.JOINING_GROUP_ALEF),
+        ([0x1A10], WidthState.BUGINESE_LETTER_YA),
+        (range(0x2D31, 0x2D66), WidthState.TIFINAGH_CONSONANT),
+        ([0x2D6F], WidthState.TIFINAGH_CONSONANT),
+        ([0xA4FC], WidthState.LISU_TONE_LETTER_MYA_NA_JEU),
+        ([0xA4FD], WidthState.LISU_TONE_LETTER_MYA_NA_JEU),
+        ([0xFE0F], WidthState.VARIATION_SELECTOR_16),
+        ([0x10C03], WidthState.OLD_TURKIC_LETTER_ORKHON_I),
+        (emoji_presentation, WidthState.EMOJI_PRESENTATION),
+        (emoji_modifiers, WidthState.EMOJI_MODIFIER),
+        (regional_indicators, WidthState.REGIONAL_INDICATOR),
     ]:
         for cp in cps:
             not_ea[cp] = width
             ea[cp] = width
 
     # East-Asian only
-    ea[0x0338] = CharWidth.COMBINING_LONG_SOLIDUS_OVERLAY
+    ea[0x0338] = WidthState.COMBINING_LONG_SOLIDUS_OVERLAY
 
     # Not East Asian only
-    not_ea[0xFE0E] = CharWidth.VARIATION_SELECTOR_15
+    not_ea[0xFE0E] = WidthState.VARIATION_SELECTOR_15
 
     return (not_ea, ea)
 
@@ -552,7 +616,7 @@ def load_joining_group_lam() -> list[tuple[Codepoint, Codepoint]]:
 
 
 def load_non_transparent_zero_widths(
-    width_map: list[CharWidth],
+    width_map: list[WidthState],
 ) -> list[tuple[Codepoint, Codepoint]]:
     "Returns a list of characters with zero width but not 'Joining_Type=Transparent'"
 
@@ -596,7 +660,7 @@ def load_ligature_transparent() -> list[tuple[Codepoint, Codepoint]]:
 
 def load_solidus_transparent(
     ligature_transparents: list[tuple[Codepoint, Codepoint]],
-    cjk_width_map: list[CharWidth],
+    cjk_width_map: list[WidthState],
 ) -> list[tuple[Codepoint, Codepoint]]:
     """Characters expanding to a canonical combining class above 1, plus `ligature_transparent`s from above.
     Ranges matching ones in `ligature_transparent` exactly are excluded (for compression), so it needs to bechecked also.
@@ -641,13 +705,13 @@ def load_solidus_transparent(
 
 
 def make_special_ranges(
-    width_map: list[CharWidth],
-) -> list[tuple[tuple[Codepoint, Codepoint], CharWidth]]:
+    width_map: list[WidthState],
+) -> list[tuple[tuple[Codepoint, Codepoint], WidthState]]:
     "Assign ranges of characters to their special behavior (used in match)"
     ret = []
     can_merge_with_prev = False
     for cp, width in enumerate(width_map):
-        if width == CharWidth.EMOJI_PRESENTATION:
+        if width == WidthState.EMOJI_PRESENTATION:
             can_merge_with_prev = False
         elif width.table_width() == CharWidthInTable.SPECIAL:
             if can_merge_with_prev and ret[-1][1] == width:
@@ -824,8 +888,8 @@ class Table:
 
 
 def make_tables(
-    width_map: list[CharWidth],
-    cjk_width_map: list[CharWidth],
+    width_map: list[WidthState],
+    cjk_width_map: list[WidthState],
 ) -> list[Table]:
     """Creates a table for each configuration in `table_cfgs`, with the first config corresponding
     to the top-level lookup table, the second config corresponding to the second-level lookup
@@ -1038,7 +1102,7 @@ def make_ranges_table(
 
 def lookup_fns(
     is_cjk: bool,
-    special_ranges: list[tuple[tuple[Codepoint, Codepoint], CharWidth]],
+    special_ranges: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
     joining_group_lam: list[tuple[Codepoint, Codepoint]],
 ) -> str:
     if is_cjk:
@@ -1125,7 +1189,12 @@ pub fn single_char_width{cjk_lo}(c: char) -> Option<usize> {{
 fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
     if next_info.is_emoji_presentation() {{
         if starts_emoji_presentation_seq(c) {{
-            return (2, WidthInfo::DEFAULT);
+            let width = if next_info.is_zwj_emoji_presentation() {{
+                0
+            }} else {{
+                2
+            }};
+            return (width, WidthInfo::EMOJI_PRESENTATION);
         }} else {{
             next_info = next_info.unset_emoji_presentation();
         }}
@@ -1243,12 +1312,100 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
                 }"""
 
     s += f"""
-
                 // Emoji modifier
                 (WidthInfo::EMOJI_MODIFIER, _) if is_emoji_modifier_base(c) => {{
                     return (0, WidthInfo::EMOJI_PRESENTATION);
                 }}
 
+                // Regional indicator
+                (
+                    WidthInfo::REGIONAL_INDICATOR | WidthInfo::SEVERAL_REGIONAL_INDICATOR,
+                    '\\u{{1F1E6}}'..='\\u{{1F1FF}}',
+                ) => return (1, WidthInfo::SEVERAL_REGIONAL_INDICATOR),
+
+                // ZWJ emoji
+                (
+                    WidthInfo::EMOJI_PRESENTATION
+                    | WidthInfo::SEVERAL_REGIONAL_INDICATOR
+                    | WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::EMOJI_MODIFIER,
+                    '\\u{{200D}}',
+                ) => return (0, WidthInfo::ZWJ_EMOJI_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\\u{{20E3}}') => {{
+                    return (0, WidthInfo::KEYCAP_ZWJ_EMOJI_PRESENTATION);
+                }}
+                (WidthInfo::VS16_ZWJ_EMOJI_PRESENTATION, _) if starts_emoji_presentation_seq(c) => {{
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }}
+                (WidthInfo::VS16_KEYCAP_ZWJ_EMOJI_PRESENTATION, '0'..='9' | '#' | '*') => {{
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }}
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\\u{{1F1E6}}'..='\\u{{1F1FF}}') => {{
+                    return (1, WidthInfo::REGIONAL_INDICATOR_ZWJ_PRESENTATION);
+                }}
+                (
+                    WidthInfo::REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION,
+                    '\\u{{1F1E6}}'..='\\u{{1F1FF}}',
+                ) => return (-1, WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION),
+                (
+                    WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION,
+                    '\\u{{1F1E6}}'..='\\u{{1F1FF}}',
+                ) => return (3, WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\\u{{1F3FB}}'..='\\u{{1F3FF}}') => {{
+                    return (0, WidthInfo::EMOJI_MODIFIER);
+                }}
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\\u{{E007F}}') => {{
+                    return (0, WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION);
+                }}
+                (WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0061}}'..='\\u{{E007A}}') => {{
+                    return (0, WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION);
+                }}
+                (WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0061}}'..='\\u{{E007A}}') => {{
+                    return (0, WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION)
+                }}
+                (WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0061}}'..='\\u{{E007A}}') => {{
+                    return (0, WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION)
+                }}
+                (WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0061}}'..='\\u{{E007A}}') => {{
+                    return (0, WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION)
+                }}
+                (WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0061}}'..='\\u{{E007A}}') => {{
+                    return (0, WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION)
+                }}
+                (WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0061}}'..='\\u{{E007A}}') => {{
+                    return (0, WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION)
+                }}
+                (
+                    WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION,
+                    '\\u{{E0030}}'..='\\u{{E0039}}',
+                ) => return (0, WidthInfo::TAG_D1_END_ZWJ_EMOJI_PRESENTATION),
+                (WidthInfo::TAG_D1_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0030}}'..='\\u{{E0039}}') => {{
+                    return (0, WidthInfo::TAG_D2_END_ZWJ_EMOJI_PRESENTATION);
+                }}
+                (WidthInfo::TAG_D2_END_ZWJ_EMOJI_PRESENTATION, '\\u{{E0030}}'..='\\u{{E0039}}') => {{
+                    return (0, WidthInfo::TAG_D3_END_ZWJ_EMOJI_PRESENTATION);
+                }}
+                (
+                    WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_D3_END_ZWJ_EMOJI_PRESENTATION,
+                    '\\u{{1F3F4}}',
+                ) => return (0, WidthInfo::EMOJI_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, _)
+                    if lookup_width{cjk_lo}(c).1 == WidthInfo::EMOJI_PRESENTATION =>
+                {{
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }}
+
+                // Fallback
                 _ => {{}}
             }}
         }}
@@ -1279,8 +1436,8 @@ def emit_module(
     out_name: str,
     unicode_version: tuple[int, int, int],
     tables: list[Table],
-    special_ranges: list[tuple[tuple[Codepoint, Codepoint], CharWidth]],
-    special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], CharWidth]],
+    special_ranges: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
+    special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
     emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
     text_presentation_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
     emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
@@ -1311,7 +1468,7 @@ def emit_module(
 use core::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct WidthInfo(u8);
+struct WidthInfo(u16);
 
 impl WidthInfo {
     /// No special handling necessary
@@ -1319,66 +1476,77 @@ impl WidthInfo {
 """
         )
 
-        for variant in CharWidth:
+        for variant in WidthState:
             if variant.table_width() == CharWidthInTable.SPECIAL:
                 if variant in [
-                    CharWidth.COMBINING_LONG_SOLIDUS_OVERLAY,
-                    CharWidth.SOLIDUS_OVERLAY_ALEF,
+                    WidthState.COMBINING_LONG_SOLIDUS_OVERLAY,
+                    WidthState.SOLIDUS_OVERLAY_ALEF,
                 ]:
                     module.write('    #[cfg(feature = "cjk")]\n')
                 module.write(
-                    f"    const {variant.name}: Self = Self(0b{variant.value:08b});\n"
+                    f"    const {variant.name}: Self = Self(0b{variant.value:016b});\n"
                 )
 
         module.write(
             f"""
     /// Whether this width mode is ligature_transparent
-    /// (has 3rd MSB set.)
+    /// (has 5th MSB set.)
     fn is_ligature_transparent(self) -> bool {{
-        (self.0 & 0b0010_0000) == 0b0010_0000
+        (self.0 & 0b0000_1000_0000_0000) == 0b0000_1000_0000_0000
     }}
 
-    /// Sets 4th MSB.
+    /// Sets 6th MSB.
     fn set_zwj_bit(self) -> Self {{
-        Self(self.0 | 0b001_0000)
+        Self(self.0 | 0b0000_0100_0000_0000)
     }}
 
     /// Has top bit set
     fn is_emoji_presentation(self) -> bool {{
-        (self.0 & 0b1000_0000) == 0b1000_0000
+        (self.0 & 0b1000_0000_0000_0000) == 0b1000_0000_0000_0000
+    }}
+
+    /// Has top bit set
+    fn is_zwj_emoji_presentation(self) -> bool {{
+        (self.0 & 0b1011_0000_0000_0000) == 0b1001_0000_0000_0000
     }}
 
     /// Set top bit
     fn set_emoji_presentation(self) -> Self {{
-        if self.0 >= 0b0000_1111 {{
-            Self(self.0 | 0b1000_0000)
+        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000
+            || (self.0 & 0b1001_0000_0000_0000) == 0b0001_0000_0000_0000
+        {{
+            Self(self.0 | 0b1000_0000_0000_0000)
         }} else {{
-            Self(0b1000_0000)
+            Self::VARIATION_SELECTOR_16
         }}
     }}
 
     /// Clear top bit
     fn unset_emoji_presentation(self) -> Self {{
-        Self(self.0 & 0b0111_1111)
+        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000 {{
+            Self(self.0 & 0b0111_1111_1111_1111)
+        }} else {{
+            Self::DEFAULT
+        }}
     }}
 
     /// Has 2nd bit set
     fn is_text_presentation(self) -> bool {{
-        (self.0 & 0b0100_0000) == 0b0100_0000
+        (self.0 & 0b0100_0000_0000_0000) == 0b0100_0000_0000_0000
     }}
 
     /// Set 2nd bit
     fn set_text_presentation(self) -> Self {{
-        if self.0 >= 0b0000_1111 {{
-            Self(self.0 | 0b0100_0000)
+        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000 {{
+            Self(self.0 | 0b0100_0000_0000_0000)
         }} else {{
-            Self(0b0100_0000)
+            Self(0b0100_0000_0000_0000)
         }}
     }}
 
     /// Clear 2nd bit
     fn unset_text_presentation(self) -> Self {{
-        Self(self.0 & 0b1011_1111)
+        Self(self.0 & 0b1011_1111_1111_1111)
     }}
 }}
 

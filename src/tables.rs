@@ -13,81 +13,110 @@
 use core::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct WidthInfo(u8);
+struct WidthInfo(u16);
 
 impl WidthInfo {
     /// No special handling necessary
     const DEFAULT: Self = Self(0);
-    const LINE_FEED: Self = Self(0b00000011);
-    const EMOJI_MODIFIER: Self = Self(0b00000100);
-    const REGIONAL_INDICATOR: Self = Self(0b00000101);
-    const EMOJI_PRESENTATION: Self = Self(0b00000110);
-    const VARIATION_SELECTOR_15: Self = Self(0b01000000);
-    const VARIATION_SELECTOR_16: Self = Self(0b10000000);
-    const JOINING_GROUP_ALEF: Self = Self(0b00001111);
+    const LINE_FEED: Self = Self(0b0000000000000001);
+    const EMOJI_MODIFIER: Self = Self(0b0000000000000010);
+    const REGIONAL_INDICATOR: Self = Self(0b0000000000000011);
+    const SEVERAL_REGIONAL_INDICATOR: Self = Self(0b0000000000000100);
+    const EMOJI_PRESENTATION: Self = Self(0b0000000000000101);
+    const ZWJ_EMOJI_PRESENTATION: Self = Self(0b0001000000000110);
+    const VS16_ZWJ_EMOJI_PRESENTATION: Self = Self(0b1001000000000110);
+    const KEYCAP_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0001000000000111);
+    const VS16_KEYCAP_ZWJ_EMOJI_PRESENTATION: Self = Self(0b1001000000000111);
+    const REGIONAL_INDICATOR_ZWJ_PRESENTATION: Self = Self(0b0000000000001001);
+    const EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION: Self = Self(0b0000000000001010);
+    const ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION: Self = Self(0b0000000000001011);
+    const TAG_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000010000);
+    const TAG_D1_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000010001);
+    const TAG_D2_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000010010);
+    const TAG_D3_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000010011);
+    const TAG_A1_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011001);
+    const TAG_A2_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011010);
+    const TAG_A3_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011011);
+    const TAG_A4_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011100);
+    const TAG_A5_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011101);
+    const TAG_A6_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011110);
+    const VARIATION_SELECTOR_15: Self = Self(0b0100000000000000);
+    const VARIATION_SELECTOR_16: Self = Self(0b1000000000000000);
+    const JOINING_GROUP_ALEF: Self = Self(0b0011000011111111);
     #[cfg(feature = "cjk")]
-    const COMBINING_LONG_SOLIDUS_OVERLAY: Self = Self(0b00111111);
+    const COMBINING_LONG_SOLIDUS_OVERLAY: Self = Self(0b0011110011111111);
     #[cfg(feature = "cjk")]
-    const SOLIDUS_OVERLAY_ALEF: Self = Self(0b00101111);
-    const HEBREW_LETTER_LAMED: Self = Self(0b00100000);
-    const ZWJ_HEBREW_LETTER_LAMED: Self = Self(0b00110000);
-    const BUGINESE_LETTER_YA: Self = Self(0b00100001);
-    const ZWJ_BUGINESE_LETTER_YA: Self = Self(0b00110001);
-    const BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA: Self = Self(0b00110010);
-    const TIFINAGH_CONSONANT: Self = Self(0b00100011);
-    const ZWJ_TIFINAGH_CONSONANT: Self = Self(0b00110011);
-    const TIFINAGH_JOINER_CONSONANT: Self = Self(0b00110100);
-    const LISU_TONE_LETTER_MYA_NA_JEU: Self = Self(0b00110101);
-    const OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b00100110);
-    const ZWJ_OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b00110110);
+    const SOLIDUS_OVERLAY_ALEF: Self = Self(0b0011100011111111);
+    const HEBREW_LETTER_LAMED: Self = Self(0b0011100000000000);
+    const ZWJ_HEBREW_LETTER_LAMED: Self = Self(0b0011110000000000);
+    const BUGINESE_LETTER_YA: Self = Self(0b0011100000000001);
+    const ZWJ_BUGINESE_LETTER_YA: Self = Self(0b0011110000000001);
+    const BUGINESE_VOWEL_SIGN_I_ZWJ_LETTER_YA: Self = Self(0b0011110000000010);
+    const TIFINAGH_CONSONANT: Self = Self(0b0011100000000011);
+    const ZWJ_TIFINAGH_CONSONANT: Self = Self(0b0011110000000011);
+    const TIFINAGH_JOINER_CONSONANT: Self = Self(0b0011110000000100);
+    const LISU_TONE_LETTER_MYA_NA_JEU: Self = Self(0b0011110000000101);
+    const OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b0011100000000110);
+    const ZWJ_OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b0011110000000110);
 
     /// Whether this width mode is ligature_transparent
-    /// (has 3rd MSB set.)
+    /// (has 5th MSB set.)
     fn is_ligature_transparent(self) -> bool {
-        (self.0 & 0b0010_0000) == 0b0010_0000
+        (self.0 & 0b0000_1000_0000_0000) == 0b0000_1000_0000_0000
     }
 
-    /// Sets 4th MSB.
+    /// Sets 6th MSB.
     fn set_zwj_bit(self) -> Self {
-        Self(self.0 | 0b001_0000)
+        Self(self.0 | 0b0000_0100_0000_0000)
     }
 
     /// Has top bit set
     fn is_emoji_presentation(self) -> bool {
-        (self.0 & 0b1000_0000) == 0b1000_0000
+        (self.0 & 0b1000_0000_0000_0000) == 0b1000_0000_0000_0000
+    }
+
+    /// Has top bit set
+    fn is_zwj_emoji_presentation(self) -> bool {
+        (self.0 & 0b1011_0000_0000_0000) == 0b1001_0000_0000_0000
     }
 
     /// Set top bit
     fn set_emoji_presentation(self) -> Self {
-        if self.0 >= 0b0000_1111 {
-            Self(self.0 | 0b1000_0000)
+        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000
+            || (self.0 & 0b1001_0000_0000_0000) == 0b0001_0000_0000_0000
+        {
+            Self(self.0 | 0b1000_0000_0000_0000)
         } else {
-            Self(0b1000_0000)
+            Self::VARIATION_SELECTOR_16
         }
     }
 
     /// Clear top bit
     fn unset_emoji_presentation(self) -> Self {
-        Self(self.0 & 0b0111_1111)
+        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000 {
+            Self(self.0 & 0b0111_1111_1111_1111)
+        } else {
+            Self::DEFAULT
+        }
     }
 
     /// Has 2nd bit set
     fn is_text_presentation(self) -> bool {
-        (self.0 & 0b0100_0000) == 0b0100_0000
+        (self.0 & 0b0100_0000_0000_0000) == 0b0100_0000_0000_0000
     }
 
     /// Set 2nd bit
     fn set_text_presentation(self) -> Self {
-        if self.0 >= 0b0000_1111 {
-            Self(self.0 | 0b0100_0000)
+        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000 {
+            Self(self.0 | 0b0100_0000_0000_0000)
         } else {
-            Self(0b0100_0000)
+            Self(0b0100_0000_0000_0000)
         }
     }
 
     /// Clear 2nd bit
     fn unset_text_presentation(self) -> Self {
-        Self(self.0 & 0b1011_1111)
+        Self(self.0 & 0b1011_1111_1111_1111)
     }
 }
 
@@ -136,6 +165,7 @@ fn lookup_width(c: char) -> (u8, WidthInfo) {
             '\u{FE0E}' => (0, WidthInfo::VARIATION_SELECTOR_15),
             '\u{FE0F}' => (0, WidthInfo::VARIATION_SELECTOR_16),
             '\u{10C03}' => (1, WidthInfo::OLD_TURKIC_LETTER_ORKHON_I),
+            '\u{1F1E6}'..='\u{1F1FF}' => (1, WidthInfo::REGIONAL_INDICATOR),
             '\u{1F3FB}'..='\u{1F3FF}' => (2, WidthInfo::EMOJI_MODIFIER),
             _ => (2, WidthInfo::EMOJI_PRESENTATION),
         }
@@ -170,7 +200,12 @@ pub fn single_char_width(c: char) -> Option<usize> {
 fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
     if next_info.is_emoji_presentation() {
         if starts_emoji_presentation_seq(c) {
-            return (2, WidthInfo::DEFAULT);
+            let width = if next_info.is_zwj_emoji_presentation() {
+                0
+            } else {
+                2
+            };
+            return (width, WidthInfo::EMOJI_PRESENTATION);
         } else {
             next_info = next_info.unset_emoji_presentation();
         }
@@ -248,12 +283,100 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
                 (WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I, '\u{10C32}') => {
                     return (0, WidthInfo::DEFAULT);
                 }
-
                 // Emoji modifier
                 (WidthInfo::EMOJI_MODIFIER, _) if is_emoji_modifier_base(c) => {
                     return (0, WidthInfo::EMOJI_PRESENTATION);
                 }
 
+                // Regional indicator
+                (
+                    WidthInfo::REGIONAL_INDICATOR | WidthInfo::SEVERAL_REGIONAL_INDICATOR,
+                    '\u{1F1E6}'..='\u{1F1FF}',
+                ) => return (1, WidthInfo::SEVERAL_REGIONAL_INDICATOR),
+
+                // ZWJ emoji
+                (
+                    WidthInfo::EMOJI_PRESENTATION
+                    | WidthInfo::SEVERAL_REGIONAL_INDICATOR
+                    | WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::EMOJI_MODIFIER,
+                    '\u{200D}',
+                ) => return (0, WidthInfo::ZWJ_EMOJI_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{20E3}') => {
+                    return (0, WidthInfo::KEYCAP_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::VS16_ZWJ_EMOJI_PRESENTATION, _) if starts_emoji_presentation_seq(c) => {
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }
+                (WidthInfo::VS16_KEYCAP_ZWJ_EMOJI_PRESENTATION, '0'..='9' | '#' | '*') => {
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{1F1E6}'..='\u{1F1FF}') => {
+                    return (1, WidthInfo::REGIONAL_INDICATOR_ZWJ_PRESENTATION);
+                }
+                (
+                    WidthInfo::REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION,
+                    '\u{1F1E6}'..='\u{1F1FF}',
+                ) => return (-1, WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION),
+                (
+                    WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION,
+                    '\u{1F1E6}'..='\u{1F1FF}',
+                ) => return (3, WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{1F3FB}'..='\u{1F3FF}') => {
+                    return (0, WidthInfo::EMOJI_MODIFIER);
+                }
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{E007F}') => {
+                    return (0, WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (
+                    WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION,
+                    '\u{E0030}'..='\u{E0039}',
+                ) => return (0, WidthInfo::TAG_D1_END_ZWJ_EMOJI_PRESENTATION),
+                (WidthInfo::TAG_D1_END_ZWJ_EMOJI_PRESENTATION, '\u{E0030}'..='\u{E0039}') => {
+                    return (0, WidthInfo::TAG_D2_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::TAG_D2_END_ZWJ_EMOJI_PRESENTATION, '\u{E0030}'..='\u{E0039}') => {
+                    return (0, WidthInfo::TAG_D3_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (
+                    WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_D3_END_ZWJ_EMOJI_PRESENTATION,
+                    '\u{1F3F4}',
+                ) => return (0, WidthInfo::EMOJI_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, _)
+                    if lookup_width(c).1 == WidthInfo::EMOJI_PRESENTATION =>
+                {
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }
+
+                // Fallback
                 _ => {}
             }
         }
@@ -318,6 +441,7 @@ fn lookup_width_cjk(c: char) -> (u8, WidthInfo) {
             '\u{A4FC}'..='\u{A4FD}' => (1, WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU),
             '\u{FE0F}' => (0, WidthInfo::VARIATION_SELECTOR_16),
             '\u{10C03}' => (1, WidthInfo::OLD_TURKIC_LETTER_ORKHON_I),
+            '\u{1F1E6}'..='\u{1F1FF}' => (1, WidthInfo::REGIONAL_INDICATOR),
             '\u{1F3FB}'..='\u{1F3FF}' => (2, WidthInfo::EMOJI_MODIFIER),
             _ => (2, WidthInfo::EMOJI_PRESENTATION),
         }
@@ -354,7 +478,12 @@ pub fn single_char_width_cjk(c: char) -> Option<usize> {
 fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
     if next_info.is_emoji_presentation() {
         if starts_emoji_presentation_seq(c) {
-            return (2, WidthInfo::DEFAULT);
+            let width = if next_info.is_zwj_emoji_presentation() {
+                0
+            } else {
+                2
+            };
+            return (width, WidthInfo::EMOJI_PRESENTATION);
         } else {
             next_info = next_info.unset_emoji_presentation();
         }
@@ -438,12 +567,100 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
                 (WidthInfo::JOINING_GROUP_ALEF, '\u{0338}') => {
                     return (0, WidthInfo::SOLIDUS_OVERLAY_ALEF);
                 }
-
                 // Emoji modifier
                 (WidthInfo::EMOJI_MODIFIER, _) if is_emoji_modifier_base(c) => {
                     return (0, WidthInfo::EMOJI_PRESENTATION);
                 }
 
+                // Regional indicator
+                (
+                    WidthInfo::REGIONAL_INDICATOR | WidthInfo::SEVERAL_REGIONAL_INDICATOR,
+                    '\u{1F1E6}'..='\u{1F1FF}',
+                ) => return (1, WidthInfo::SEVERAL_REGIONAL_INDICATOR),
+
+                // ZWJ emoji
+                (
+                    WidthInfo::EMOJI_PRESENTATION
+                    | WidthInfo::SEVERAL_REGIONAL_INDICATOR
+                    | WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::EMOJI_MODIFIER,
+                    '\u{200D}',
+                ) => return (0, WidthInfo::ZWJ_EMOJI_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{20E3}') => {
+                    return (0, WidthInfo::KEYCAP_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::VS16_ZWJ_EMOJI_PRESENTATION, _) if starts_emoji_presentation_seq(c) => {
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }
+                (WidthInfo::VS16_KEYCAP_ZWJ_EMOJI_PRESENTATION, '0'..='9' | '#' | '*') => {
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{1F1E6}'..='\u{1F1FF}') => {
+                    return (1, WidthInfo::REGIONAL_INDICATOR_ZWJ_PRESENTATION);
+                }
+                (
+                    WidthInfo::REGIONAL_INDICATOR_ZWJ_PRESENTATION
+                    | WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION,
+                    '\u{1F1E6}'..='\u{1F1FF}',
+                ) => return (-1, WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION),
+                (
+                    WidthInfo::EVEN_REGIONAL_INDICATOR_ZWJ_PRESENTATION,
+                    '\u{1F1E6}'..='\u{1F1FF}',
+                ) => return (3, WidthInfo::ODD_REGIONAL_INDICATOR_ZWJ_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{1F3FB}'..='\u{1F3FF}') => {
+                    return (0, WidthInfo::EMOJI_MODIFIER);
+                }
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, '\u{E007F}') => {
+                    return (0, WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION, '\u{E0061}'..='\u{E007A}') => {
+                    return (0, WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION)
+                }
+                (
+                    WidthInfo::TAG_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A1_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A2_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION,
+                    '\u{E0030}'..='\u{E0039}',
+                ) => return (0, WidthInfo::TAG_D1_END_ZWJ_EMOJI_PRESENTATION),
+                (WidthInfo::TAG_D1_END_ZWJ_EMOJI_PRESENTATION, '\u{E0030}'..='\u{E0039}') => {
+                    return (0, WidthInfo::TAG_D2_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (WidthInfo::TAG_D2_END_ZWJ_EMOJI_PRESENTATION, '\u{E0030}'..='\u{E0039}') => {
+                    return (0, WidthInfo::TAG_D3_END_ZWJ_EMOJI_PRESENTATION);
+                }
+                (
+                    WidthInfo::TAG_A3_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A4_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A5_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION
+                    | WidthInfo::TAG_D3_END_ZWJ_EMOJI_PRESENTATION,
+                    '\u{1F3F4}',
+                ) => return (0, WidthInfo::EMOJI_PRESENTATION),
+                (WidthInfo::ZWJ_EMOJI_PRESENTATION, _)
+                    if lookup_width_cjk(c).1 == WidthInfo::EMOJI_PRESENTATION =>
+                {
+                    return (0, WidthInfo::EMOJI_PRESENTATION)
+                }
+
+                // Fallback
                 _ => {}
             }
         }

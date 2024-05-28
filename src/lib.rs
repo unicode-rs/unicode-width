@@ -56,6 +56,7 @@
 //! 1. In the following cases, the width of a string differs from the sum of the widths of its constituent characters:
 //!    - The sequence `"\r\n"` has width 1.
 //!    - Emoji-specific ligatures:
+//!      - Well-formed, fully-qualified [emoji ZWJ sequences] have width 2.
 //!      - [Emoji modifier sequences] have width 2.
 //!      - [Emoji presentation sequences] have width 2.
 //!      - Outside of an East Asian context, [text presentation sequences] have width 1 if their base character:
@@ -139,6 +140,7 @@
 //!
 //! [combining marks]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G30602
 //!
+//! [emoji ZWJ sequences]: https://www.unicode.org/reports/tr51/#def_emoji_sequence
 //! [Emoji modifier sequences]: https://www.unicode.org/reports/tr51/#def_emoji_modifier_sequence
 //! [Emoji presentation sequences]: https://unicode.org/reports/tr51/#def_emoji_presentation_sequence
 //! [text presentation sequences]: https://unicode.org/reports/tr51/#def_text_presentation_sequence

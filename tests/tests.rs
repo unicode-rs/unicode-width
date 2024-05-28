@@ -43,10 +43,17 @@ fn test_str() {
 
 #[test]
 fn test_emoji() {
-    // Example from the README.
     assert_width!("👩", 2, 2); // Woman
     assert_width!("🔬", 2, 2); // Microscope
-    assert_width!("👩‍🔬", 4, 4); // Woman scientist
+    assert_width!("👩‍🔬", 2, 2); // Woman scientist
+}
+
+// From README
+#[test]
+fn test_bad_devanagari() {
+    assert_eq!("क".width(), 1); // Devanagari letter Ka
+    assert_eq!("ष".width(), 1); // Devanagari letter Ssa
+    assert_eq!("क्ष".width(), 2); // Ka + Virama + Ssa
 }
 
 #[test]
@@ -288,13 +295,13 @@ fn test_hebrew_alef_lamed() {
     assert_width!(
         "\u{05D0}\u{200D}\u{200D}\u{200D}\u{200D}\u{200D}\u{200D}\u{200D}\u{05DC}",
         1,
-        1
+        1,
     );
     assert_width!("\u{05D0}\u{05D0}\u{200D}\u{05DC}", 2, 2);
     assert_width!(
         "\u{05D0}\u{05D0}\u{200D}\u{200D}\u{200D}\u{200D}\u{200D}\u{200D}\u{05DC}",
         2,
-        2
+        2,
     );
     assert_width!("\u{05D0}\u{FE0F}\u{200D}\u{FE0F}\u{05DC}\u{FE0F}", 1, 1);
     assert_width!("\u{05D0}\u{FE0E}\u{200D}\u{FE0E}\u{05DC}\u{FE0E}", 1, 1);
@@ -348,7 +355,7 @@ fn test_buginese_a_i_ya() {
     assert_width!(
         "\u{1A15}\u{1A17}\u{200D}\u{200D}\u{200D}\u{200D}\u{1A10}",
         1,
-        1
+        1,
     );
     assert_width!("\u{1A15}\u{1A17}\u{200D}\u{338}", 1, 1);
     assert_width!("\u{1A15}\u{FE0E}\u{1A17}\u{200D}", 1, 1);
@@ -360,14 +367,14 @@ fn test_buginese_a_i_ya() {
     assert_width!(
         "\u{1A15}\u{17B5}\u{200D}\u{FE0E}\u{1A17}\u{200D}\u{FE0F}\u{200D}\u{FE0F}",
         1,
-        1
+        1,
     );
 
     assert_width!("\u{1A15}\u{1A15}\u{1A17}\u{200D}\u{1A10}", 2, 2);
     assert_width!(
         "\u{1A15}\u{1A15}\u{1A17}\u{200D}\u{200D}\u{200D}\u{200D}\u{1A10}",
         2,
-        2
+        2,
     );
 
     assert_width!("\u{1A15}\u{1A17}\u{1A10}", 2, 2);
@@ -389,7 +396,7 @@ fn test_tifinagh_biconsonants() {
     assert_width!(
         "\u{2D4F}\u{FE0F}\u{200D}\u{2D7F}\u{FE0E}\u{200D}\u{17B5}\u{2D3E}",
         1,
-        1
+        1,
     );
 
     assert_width!("\u{2D4F}\u{301}\u{2D7F}\u{2D3E}", 3, 3);
@@ -422,4 +429,119 @@ fn test_emoji_modifier() {
     assert_width!("\u{1F3FB}", 2, 2);
     assert_width!("\u{1F46A}\u{1F3FB}", 2, 2);
     assert_width!("\u{1F46A}\u{200D}\u{200D}\u{1F3FB}", 4, 4);
+}
+
+#[test]
+fn test_emoji_zwj() {
+    assert_width!("🧑‍🤝‍🧑", 2, 2);
+
+    assert_width!("🇮🇱🕊️🇵🇸", 6, 6);
+    assert_width!("🇵🇸\u{200D}🕊️\u{200D}🇮🇱", 2, 2);
+    assert_width!("🇮🇱\u{200D}🕊️\u{200D}\u{200D}🇵🇸", 4, 4);
+    assert_width!("🇵🇸\u{200D}\u{200D}🕊️\u{200D}🇮🇱", 4, 4);
+
+    assert_width!("🇦🇦\u{200D}🇦🇦", 2, 2);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦", 3, 3);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦", 3, 3);
+
+    assert_width!("🇦🇦\u{200D}\u{200D}🇦🇦", 4, 4);
+    assert_width!("🇦🇦\u{200D}🇦\u{200D}🇦🇦", 5, 5);
+    assert_width!("🇦🇦\u{200D}🇦🇦\u{200D}🇦🇦", 2, 2);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦\u{200D}🇦🇦", 5, 5);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦🇦\u{200D}🇦🇦", 4, 4);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦🇦🇦\u{200D}🇦🇦", 7, 7);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦🇦🇦🇦\u{200D}🇦🇦", 6, 6);
+    assert_width!("🇦🇦\u{200D}🇦🇦🇦🇦🇦🇦🇦\u{200D}🇦🇦", 9, 9);
+
+    assert_width!("🏴󠁧󠁢󠁷󠁬󠁳󠁿", 2, 2);
+    assert_width!("🏴󠁧󠁢󠁥󠁮󠁧󠁿\u{200D}🏴󠁧󠁢󠁳󠁣󠁴󠁿\u{200D}🏴󠁧󠁢󠁷󠁬󠁳󠁿", 2, 2);
+
+    assert_width!("🇦👪\u{200D}🏿", 3, 3);
+    assert_width!("🇦🏿\u{200D}🏿", 3, 3);
+
+    assert_width!('🏴', Some(2), Some(2));
+    assert_width!("\u{E0031}", 0, 0);
+    assert_width!("\u{E0063}", 0, 0);
+    assert_width!("\u{E007F}", 0, 0);
+    assert_width!("🏴\u{200D}Ⓜ️", 2, 2);
+    assert_width!("🏴\u{E0031}\u{200D}Ⓜ️", 4, 4);
+    assert_width!("🏴\u{E0063}\u{200D}Ⓜ️", 4, 4);
+    assert_width!("🏴\u{E007F}\u{200D}Ⓜ️", 4, 4);
+    assert_width!("🏴\u{E0031}\u{E007F}\u{200D}Ⓜ️", 4, 4);
+    assert_width!("🏴\u{E0031}\u{E0031}\u{E007F}\u{200D}Ⓜ️", 4, 4);
+    assert_width!("🏴\u{E0031}\u{E0031}\u{E0031}\u{E007F}\u{200D}Ⓜ️", 2, 2);
+    assert_width!(
+        "🏴\u{E0031}\u{E0031}\u{E0031}\u{E0031}\u{E007F}\u{200D}Ⓜ️",
+        4,
+        4,
+    );
+    assert_width!(
+        "🏴\u{E0031}\u{E0031}\u{E0031}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0031}\u{E0031}\u{E0031}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0031}\u{E0031}\u{E0031}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0031}\u{E0031}\u{E0031}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0031}\u{E0031}\u{E0031}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        4,
+        4,
+    );
+    assert_width!("🏴\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️", 4, 4);
+    assert_width!("🏴\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️", 2, 2);
+    assert_width!(
+        "🏴\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        2,
+        2,
+    );
+    assert_width!(
+        "🏴\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E0063}\u{E007F}\u{200D}Ⓜ️",
+        4,
+        4,
+    );
+
+    assert_width!("a\u{200D}🏴󠁧󠁢󠁷󠁬󠁳󠁿", 3, 3);
+    assert_width!("👪\u{200D}a", 3, 3);
+    assert_width!("a\u{200D}a", 2, 2);
+
+    assert_width!("*\u{FE0F}", 2, 2);
+    assert_width!("*\u{20E3}", 1, 1);
+    assert_width!("*️⃣", 2, 2);
+    assert_width!("*\u{FE0F}", 2, 2);
+    assert_width!("*\u{20E3}\u{FE0F}", 1, 1);
+    assert_width!("*️⃣\u{200D}👪", 2, 2);
+    assert_width!("*\u{20E3}\u{FE0F}\u{200D}👪", 3, 3);
+    assert_width!("*\u{20E3}\u{200D}👪", 3, 3);
+    assert_width!("*\u{FE0F}\u{200D}👪", 2, 2);
+    assert_width!("*️⃣\u{20E3}\u{200D}👪", 4, 4);
+    assert_width!("*\u{FE0F}\u{FE0F}\u{20E3}\u{200D}👪", 4, 4);
+
+    assert_width!(
+        "🇦👪\u{200D}🏿\u{200D}👪🏻\u{200D}Ⓜ️\u{200D}*\u{FE0F}\u{200D}🇦🇦\u{200D}🏴󠁧󠁢󠁷󠁬󠁳󠁿\u{200D}👪",
+        3,
+        3,
+    );
 }
