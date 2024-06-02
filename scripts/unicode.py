@@ -184,6 +184,9 @@ class WidthState(enum.IntEnum):
     WIDE = 0x1_0002
     "Two columns wide."
 
+    THREE = 0x1_0003
+    "Three columns wide."
+
     # \r\n
     LINE_FEED = 0b0000_0000_0000_0001
     "\\n (CRLF has width 1)"
@@ -324,6 +327,11 @@ class WidthState(enum.IntEnum):
     ZWJ_OLD_TURKIC_LETTER_ORKHON_I = 0b0011_1100_0000_0110
     "\\u10C03 (ORKHON EC-ZWJ-ORKHON I ligature)"
 
+    # Khmer coeng signs
+
+    KHMER_COENG_ELIGIBLE_LETTER = 0b0011_1100_0000_0111
+    "\\u1780..=\\u17A2 | \\u17A7 | \\u17AB | \\u17AC | \\u17AF"
+
     def table_width(self) -> CharWidthInTable:
         "The width of a character as stored in the lookup tables."
         match self:
@@ -335,6 +343,10 @@ class WidthState(enum.IntEnum):
                 return CharWidthInTable.TWO
             case _:
                 return CharWidthInTable.SPECIAL
+
+    def is_carried(self) -> bool:
+        "Whether this corresponds to a non-default `WidthInfo`."
+        return int(self) <= 0xFFFF
 
     def width_alone(self) -> int:
         "The width of a character with this type when it appears alone."
@@ -352,6 +364,8 @@ class WidthState(enum.IntEnum):
                 | WidthState.EMOJI_PRESENTATION
             ):
                 return 2
+            case WidthState.THREE:
+                return 3
             case _:
                 return 1
 
@@ -591,6 +605,18 @@ def load_width_maps() -> tuple[list[WidthState], list[WidthState]]:
         ([0x0A], WidthState.LINE_FEED),
         ([0x05DC], WidthState.HEBREW_LETTER_LAMED),
         (alef_joining, WidthState.JOINING_GROUP_ALEF),
+        (range(0x1780, 0x1783), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
+        (range(0x1784, 0x1788), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
+        (range(0x1789, 0x178D), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
+        (range(0x178E, 0x1794), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
+        (range(0x1795, 0x1799), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
+        (range(0x179B, 0x179E), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
+        (
+            [0x17A0, 0x17A2, 0x17A7, 0x17AB, 0x17AC, 0x17AF],
+            WidthState.KHMER_COENG_ELIGIBLE_LETTER,
+        ),
+        ([0x17A4], WidthState.WIDE),
+        ([0x17D8], WidthState.THREE),
         ([0x1A10], WidthState.BUGINESE_LETTER_YA),
         (range(0x2D31, 0x2D66), WidthState.TIFINAGH_CONSONANT),
         ([0x2D6F], WidthState.TIFINAGH_CONSONANT),
@@ -1189,7 +1215,11 @@ fn lookup_width{cjk_lo}(c: char) -> (u8, WidthInfo) {{
         s += f"            '\\u{{{lo:X}}}'"
         if hi != lo:
             s += f"..='\\u{{{hi:X}}}'"
-        s += f" => ({width.width_alone()}, WidthInfo::{str(width.name)}),\n"
+        if width.is_carried():
+            width_info = width.name
+        else:
+            width_info = "DEFAULT"
+        s += f" => ({width.width_alone()}, WidthInfo::{width_info}),\n"
 
     s += f"""            _ => (2, WidthInfo::EMOJI_PRESENTATION),
         }}
@@ -1321,6 +1351,11 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
                 // Hebrew Alef-ZWJ-Lamed ligature
                 (WidthInfo::ZWJ_HEBREW_LETTER_LAMED, '\\u{05D0}') => {
                     return (0, WidthInfo::DEFAULT);
+                }
+
+                // Khmer coeng signs
+                (WidthInfo::KHMER_COENG_ELIGIBLE_LETTER, '\\u{17D2}') => {
+                    return (-1, WidthInfo::DEFAULT);
                 }
 
                 // Buginese <a, -i> ZWJ ya ligature
@@ -1519,7 +1554,7 @@ impl WidthInfo {
         )
 
         for variant in WidthState:
-            if variant.table_width() == CharWidthInTable.SPECIAL:
+            if variant.is_carried():
                 if variant.is_cjk_only():
                     module.write('    #[cfg(feature = "cjk")]\n')
                 module.write(
@@ -1913,7 +1948,7 @@ static EMOJI_MODIFIER_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
         test_width_variants = []
         test_width_variants_cjk = []
         for variant in WidthState:
-            if variant.table_width() == CharWidthInTable.SPECIAL:
+            if variant.is_carried():
                 if not variant.is_cjk_only():
                     test_width_variants.append(variant)
                 if not variant.is_non_cjk_only():
@@ -1991,10 +2026,7 @@ mod tests {{
         )
 
         for variant in WidthState:
-            if (
-                variant.table_width() == CharWidthInTable.SPECIAL
-                and not variant.is_cjk_only()
-            ):
+            if variant.is_carried() and not variant.is_cjk_only():
                 module.write(f"        WidthInfo::{variant.name},\n")
 
         module.write(
@@ -2006,10 +2038,7 @@ mod tests {{
         )
 
         for variant in WidthState:
-            if (
-                variant.table_width() == CharWidthInTable.SPECIAL
-                and not variant.is_non_cjk_only()
-            ):
+            if variant.is_carried() and not variant.is_non_cjk_only():
                 module.write(f"        WidthInfo::{variant.name},\n")
 
         module.write(

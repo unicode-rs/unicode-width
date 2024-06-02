@@ -58,6 +58,7 @@ impl WidthInfo {
     const LISU_TONE_LETTER_MYA_NA_JEU: Self = Self(0b0011110000000101);
     const OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b0011100000000110);
     const ZWJ_OLD_TURKIC_LETTER_ORKHON_I: Self = Self(0b0011110000000110);
+    const KHMER_COENG_ELIGIBLE_LETTER: Self = Self(0b0011110000000111);
 
     /// Whether this width mode is ligature_transparent
     /// (has 5th MSB set.)
@@ -159,6 +160,8 @@ fn lookup_width(c: char) -> (u8, WidthInfo) {
             '\u{A}' => (1, WidthInfo::LINE_FEED),
             '\u{5DC}' => (1, WidthInfo::HEBREW_LETTER_LAMED),
             '\u{622}'..='\u{882}' => (1, WidthInfo::JOINING_GROUP_ALEF),
+            '\u{1780}'..='\u{17AF}' => (1, WidthInfo::KHMER_COENG_ELIGIBLE_LETTER),
+            '\u{17D8}' => (3, WidthInfo::DEFAULT),
             '\u{1A10}' => (1, WidthInfo::BUGINESE_LETTER_YA),
             '\u{2D31}'..='\u{2D6F}' => (1, WidthInfo::TIFINAGH_CONSONANT),
             '\u{A4FC}'..='\u{A4FD}' => (1, WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU),
@@ -253,6 +256,11 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
                 // Hebrew Alef-ZWJ-Lamed ligature
                 (WidthInfo::ZWJ_HEBREW_LETTER_LAMED, '\u{05D0}') => {
                     return (0, WidthInfo::DEFAULT);
+                }
+
+                // Khmer coeng signs
+                (WidthInfo::KHMER_COENG_ELIGIBLE_LETTER, '\u{17D2}') => {
+                    return (-1, WidthInfo::DEFAULT);
                 }
 
                 // Buginese <a, -i> ZWJ ya ligature
@@ -436,6 +444,8 @@ fn lookup_width_cjk(c: char) -> (u8, WidthInfo) {
             '\u{338}' => (0, WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY),
             '\u{5DC}' => (1, WidthInfo::HEBREW_LETTER_LAMED),
             '\u{622}'..='\u{882}' => (1, WidthInfo::JOINING_GROUP_ALEF),
+            '\u{1780}'..='\u{17AF}' => (1, WidthInfo::KHMER_COENG_ELIGIBLE_LETTER),
+            '\u{17D8}' => (3, WidthInfo::DEFAULT),
             '\u{1A10}' => (1, WidthInfo::BUGINESE_LETTER_YA),
             '\u{2D31}'..='\u{2D6F}' => (1, WidthInfo::TIFINAGH_CONSONANT),
             '\u{A4FC}'..='\u{A4FD}' => (1, WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU),
@@ -537,6 +547,11 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
                 // Hebrew Alef-ZWJ-Lamed ligature
                 (WidthInfo::ZWJ_HEBREW_LETTER_LAMED, '\u{05D0}') => {
                     return (0, WidthInfo::DEFAULT);
+                }
+
+                // Khmer coeng signs
+                (WidthInfo::KHMER_COENG_ELIGIBLE_LETTER, '\u{17D2}') => {
+                    return (-1, WidthInfo::DEFAULT);
                 }
 
                 // Buginese <a, -i> ZWJ ya ligature
@@ -1206,8 +1221,8 @@ static WIDTH_LEAVES: Align32<[[u8; 32]; WIDTH_LEAVES_LEN]> = Align32([
         0x55, 0x55,
     ],
     [
-        0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55, 0x10, 0x00,
-        0x50, 0x55, 0x45, 0x01, 0x00, 0x00, 0x55, 0x55, 0x51, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
+        0x7F, 0xFF, 0xFD, 0xF7, 0xFF, 0xFD, 0xD7, 0x5F, 0x77, 0xD6, 0xD5, 0xD7, 0x55, 0x10, 0x00,
+        0x50, 0x55, 0x45, 0x01, 0x00, 0x00, 0x55, 0x57, 0x51, 0x55, 0x55, 0x55, 0x55, 0x55, 0x55,
         0x55, 0x55,
     ],
     [
@@ -2575,7 +2590,7 @@ mod tests {
         }
     }
 
-    static NORMALIZATION_TEST_WIDTHS: [WidthInfo; 37] = [
+    static NORMALIZATION_TEST_WIDTHS: [WidthInfo; 38] = [
         WidthInfo::DEFAULT,
         WidthInfo::LINE_FEED,
         WidthInfo::EMOJI_MODIFIER,
@@ -2613,10 +2628,11 @@ mod tests {
         WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU,
         WidthInfo::OLD_TURKIC_LETTER_ORKHON_I,
         WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I,
+        WidthInfo::KHMER_COENG_ELIGIBLE_LETTER,
     ];
 
     #[cfg(feature = "cjk")]
-    static NORMALIZATION_TEST_WIDTHS_CJK: [WidthInfo; 38] = [
+    static NORMALIZATION_TEST_WIDTHS_CJK: [WidthInfo; 39] = [
         WidthInfo::DEFAULT,
         WidthInfo::LINE_FEED,
         WidthInfo::EMOJI_MODIFIER,
@@ -2655,6 +2671,7 @@ mod tests {
         WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU,
         WidthInfo::OLD_TURKIC_LETTER_ORKHON_I,
         WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I,
+        WidthInfo::KHMER_COENG_ELIGIBLE_LETTER,
     ];
 
     #[rustfmt::skip]

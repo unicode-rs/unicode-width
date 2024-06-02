@@ -25,7 +25,7 @@ fn main() {
 ```
 
 **NOTE:** The computed width values may not match the actual rendered column
-width. For example, Brahmic scripts like Devanagari have complex rendering rules
+width. For example, many Brahmic scripts like Devanagari have complex rendering rules
 which this crate does not currently handle (and will never fully handle, because
 the exact rendering depends on the font):
 

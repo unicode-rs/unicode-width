@@ -386,6 +386,46 @@ fn test_old_turkic_ligature() {
 }
 
 #[test]
+fn test_khmer_coeng() {
+    assert_width!("ល", 1, 1);
+    assert_width!("ង", 1, 1);
+    assert_width!("លង", 2, 2);
+    assert_width!("ល្ង", 1, 1);
+
+    for c in '\0'..=char::MAX {
+        if matches!(
+            c,
+            '\u{1780}'..='\u{1782}' | '\u{1784}'..='\u{1787}'
+            | '\u{1789}'..='\u{178C}'  | '\u{178E}'..='\u{1793}'
+            | '\u{1795}'..='\u{1798}' | '\u{179B}'..='\u{179D}'
+            | '\u{17A0}' | '\u{17A2}'  | '\u{17A7}'
+            | '\u{17AB}'..='\u{17AC}' | '\u{17AF}'
+        ) {
+            assert_width!(format!("\u{17D2}{c}"), 0, 0);
+            assert_width!(format!("\u{17D2}\u{200D}\u{200D}{c}"), 0, 0);
+        } else {
+            assert_width!(
+                format!("\u{17D2}{c}"),
+                c.width().unwrap_or(1),
+                c.width_cjk().unwrap_or(1)
+            );
+        }
+    }
+}
+
+#[test]
+fn test_khmer_qaa() {
+    assert_width!("\u{17A4}", 2, 2);
+    assert_width!("\u{17A2}\u{17A6}", 2, 2);
+}
+
+#[test]
+fn test_khmer_sign_beyyal() {
+    assert_width!("\u{17D8}", 3, 3);
+    assert_width!("\u{17D4}\u{179B}\u{17D4}", 3, 3);
+}
+
+#[test]
 fn test_emoji_modifier() {
     assert_width!("\u{1F46A}", 2, 2);
     assert_width!("\u{1F3FB}", 2, 2);
