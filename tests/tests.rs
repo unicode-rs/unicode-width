@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::{
+    fs::File,
+    io::{BufRead, BufReader},
+};
+
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 macro_rules! assert_width {
@@ -501,6 +506,32 @@ fn test_emoji_zwj() {
         3,
         3,
     );
+}
+
+#[test]
+fn emoji_test_file() {
+    let norm_file = BufReader::new(
+        File::open("tests/emoji-test.txt")
+            .expect("run `unicode.py` first to download `emoji-test.txt`"),
+    );
+    for line in norm_file.lines() {
+        let line = line.unwrap();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let (cps, status) = line.split_once(';').unwrap();
+        let status = status.trim();
+        if status.starts_with("fully-qualified") || status.starts_with("component") {
+            let emoji: String = cps
+                .trim()
+                .split(' ')
+                .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
+                .collect();
+            dbg!(&emoji);
+            assert_width!(emoji, 2, 2);
+        }
+    }
 }
 
 // Test traits are unsealed
