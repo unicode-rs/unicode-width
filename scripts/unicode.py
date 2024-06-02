@@ -252,7 +252,6 @@ class WidthState(enum.IntEnum):
     TAG_A6_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1110
     "(\\uE0061..=\\uE007A){6} \\uE007F \\u200D `Emoji_Presentation`"
 
-
     # VARIATION SELECTORS
 
     # Text presentation sequences (not CJK)
@@ -351,6 +350,15 @@ class WidthState(enum.IntEnum):
                 return 2
             case _:
                 return 1
+
+    def is_cjk_only(self) -> bool:
+        return self in [
+            WidthState.COMBINING_LONG_SOLIDUS_OVERLAY,
+            WidthState.SOLIDUS_OVERLAY_ALEF,
+        ]
+
+    def is_non_cjk_only(self) -> bool:
+        return self == WidthState.VARIATION_SELECTOR_15
 
 
 assert len(set([v.value for v in WidthState])) == len([v.value for v in WidthState])
@@ -702,6 +710,29 @@ def load_solidus_transparent(
 
     sorted = to_sorted_ranges(ccc_above_1)
     return list(filter(lambda range: range not in ligature_transparents, sorted))
+
+
+def load_normalization_tests() -> list[tuple[str, str, str, str, str]]:
+    def parse_codepoints(cps: str) -> str:
+        return "".join(map(lambda cp: chr(int(cp, 16)), cps.split(" ")))
+
+    with fetch_open("NormalizationTest.txt") as normtests:
+        ret = []
+        single = re.compile(
+            r"^([0-9A-F ]+);([0-9A-F ]+);([0-9A-F ]+);([0-9A-F ]+);([0-9A-F ]+);"
+        )
+        for line in normtests.readlines():
+            if match := single.match(line):
+                ret.append(
+                    (
+                        parse_codepoints(match.group(1)),
+                        parse_codepoints(match.group(2)),
+                        parse_codepoints(match.group(3)),
+                        parse_codepoints(match.group(4)),
+                        parse_codepoints(match.group(5)),
+                    )
+                )
+        return ret
 
 
 def make_special_ranges(
@@ -1246,7 +1277,24 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
                 }
             }
 
-            match (next_info, c) {
+            match (next_info, c) {"""
+    if is_cjk:
+        s += """
+                (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _) if is_solidus_transparent(c) => {
+                    return (
+                        lookup_width_cjk(c).0 as i8,
+                        WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY,
+                    );
+                }
+                (WidthInfo::JOINING_GROUP_ALEF, '\\u{0338}') => {
+                    return (0, WidthInfo::SOLIDUS_OVERLAY_ALEF);
+                }
+                // Arabic Lam-Alef ligature
+                (
+                    WidthInfo::JOINING_GROUP_ALEF | WidthInfo::SOLIDUS_OVERLAY_ALEF,
+                    """
+    else:
+        s += """
                 // Arabic Lam-Alef ligature
                 (
                     WidthInfo::JOINING_GROUP_ALEF,
@@ -1298,17 +1346,6 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
                 // Old Turkic ligature
                 (WidthInfo::ZWJ_OLD_TURKIC_LETTER_ORKHON_I, '\\u{10C32}') => {
                     return (0, WidthInfo::DEFAULT);
-                }"""
-    if is_cjk:
-        s += """
-                (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _) if is_solidus_transparent(c) => {
-                    return (
-                        lookup_width_cjk(c).0 as i8,
-                        WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY,
-                    );
-                }
-                (WidthInfo::JOINING_GROUP_ALEF, '\\u{0338}') => {
-                    return (0, WidthInfo::SOLIDUS_OVERLAY_ALEF);
                 }"""
 
     s += f"""
@@ -1445,6 +1482,7 @@ def emit_module(
     non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
     ligature_transparent: list[tuple[Codepoint, Codepoint]],
     solidus_transparent: list[tuple[Codepoint, Codepoint]],
+    normalization_tests: list[tuple[str, str, str, str, str]],
 ):
     """Outputs a Rust module to `out_name` using table data from `tables`.
     If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
@@ -1478,10 +1516,7 @@ impl WidthInfo {
 
         for variant in WidthState:
             if variant.table_width() == CharWidthInTable.SPECIAL:
-                if variant in [
-                    WidthState.COMBINING_LONG_SOLIDUS_OVERLAY,
-                    WidthState.SOLIDUS_OVERLAY_ALEF,
-                ]:
+                if variant.is_cjk_only():
                     module.write('    #[cfg(feature = "cjk")]\n')
                 module.write(
                     f"    const {variant.name}: Self = Self(0b{variant.value:016b});\n"
@@ -1871,6 +1906,121 @@ static EMOJI_MODIFIER_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
                 module.write(f"    (0x{lo:02X}, 0x{hi:02X}),\n")
             module.write(f"];\n")
 
+        test_width_variants = []
+        test_width_variants_cjk = []
+        for variant in WidthState:
+            if variant.table_width() == CharWidthInTable.SPECIAL:
+                if not variant.is_cjk_only():
+                    test_width_variants.append(variant)
+                if not variant.is_non_cjk_only():
+                    test_width_variants_cjk.append(variant)
+
+        module.write(
+            f"""
+#[cfg(test)]
+mod tests {{
+    use super::*;
+
+    fn str_width_test(s: &str, init: WidthInfo) -> isize {{
+        s.chars()
+            .rfold((0, init), |(sum, next_info), c| -> (isize, WidthInfo) {{
+                let (add, info) = width_in_str(c, next_info);
+                (sum.checked_add(isize::from(add)).unwrap(), info)
+            }})
+            .0
+    }}
+
+    #[cfg(feature = "cjk")]
+    fn str_width_test_cjk(s: &str, init: WidthInfo) -> isize {{
+        s.chars()
+            .rfold((0, init), |(sum, next_info), c| -> (isize, WidthInfo) {{
+                let (add, info) = width_in_str_cjk(c, next_info);
+                (sum.checked_add(isize::from(add)).unwrap(), info)
+            }})
+            .0
+    }}
+
+    #[test]
+    fn test_normalization() {{
+        for &(orig, nfc, nfd, nfkc, nfkd) in &NORMALIZATION_TEST {{
+            for init in NORMALIZATION_TEST_WIDTHS {{
+                assert_eq!(
+                    str_width_test(orig, init),
+                    str_width_test(nfc, init),
+                    "width of X = {{orig:?}} differs from toNFC(X) = {{nfc:?}} with mode {{init:X?}}",
+                );
+                assert_eq!(
+                    str_width_test(orig, init),
+                    str_width_test(nfd, init),
+                    "width of X = {{orig:?}} differs from toNFD(X) = {{nfd:?}} with mode {{init:X?}}",
+                );
+                assert_eq!(
+                    str_width_test(nfkc, init),
+                    str_width_test(nfkd, init),
+                    "width of toNFKC(X) = {{nfkc:?}} differs from toNFKD(X) = {{nfkd:?}} with mode {{init:X?}}",
+                );
+            }}
+
+            #[cfg(feature = "cjk")]
+            for init in NORMALIZATION_TEST_WIDTHS_CJK {{
+                assert_eq!(
+                    str_width_test_cjk(orig, init),
+                    str_width_test_cjk(nfc, init),
+                    "CJK width of X = {{orig:?}} differs from toNFC(X) = {{nfc:?}} with mode {{init:X?}}",
+                );
+                assert_eq!(
+                    str_width_test_cjk(orig, init),
+                    str_width_test_cjk(nfd, init),
+                    "CJK width of X = {{orig:?}} differs from toNFD(X) = {{nfd:?}} with mode {{init:X?}}",
+                );
+                assert_eq!(
+                    str_width_test_cjk(nfkc, init),
+                    str_width_test_cjk(nfkd, init),
+                    "CJK width of toNFKC(X) = {{nfkc:?}} differs from toNFKD(X) = {{nfkd:?}} with mode {{init:?}}",
+                );
+            }}
+        }}
+    }}
+
+    static NORMALIZATION_TEST_WIDTHS: [WidthInfo; {len(test_width_variants) + 1}] = [
+        WidthInfo::DEFAULT,\n"""
+        )
+
+        for variant in WidthState:
+            if (
+                variant.table_width() == CharWidthInTable.SPECIAL
+                and not variant.is_cjk_only()
+            ):
+                module.write(f"        WidthInfo::{variant.name},\n")
+
+        module.write(
+            f"""    ];
+
+    #[cfg(feature = "cjk")]
+    static NORMALIZATION_TEST_WIDTHS_CJK: [WidthInfo; {len(test_width_variants_cjk) + 1}] = [
+        WidthInfo::DEFAULT,\n"""
+        )
+
+        for variant in WidthState:
+            if (
+                variant.table_width() == CharWidthInTable.SPECIAL
+                and not variant.is_non_cjk_only()
+            ):
+                module.write(f"        WidthInfo::{variant.name},\n")
+
+        module.write(
+            f"""    ];
+
+    #[rustfmt::skip]
+    static NORMALIZATION_TEST: [(&str, &str, &str, &str, &str); {len(normalization_tests)}] = [\n"""
+        )
+        for orig, nfc, nfd, nfkc, nfkd in normalization_tests:
+            module.write(
+                f'        (r#"{orig}"#, r#"{nfc}"#, r#"{nfd}"#, r#"{nfkc}"#, r#"{nfkd}"#),\n'
+            )
+
+        module.write("    ];\n}\n")
+
 
 def main(module_path: str):
     """Obtain character data from the latest version of Unicode, transform it into a multi-level
@@ -1903,8 +2053,7 @@ def main(module_path: str):
     ligature_transparent = load_ligature_transparent()
     solidus_transparent = load_solidus_transparent(ligature_transparent, cjk_width_map)
 
-    # Download normalization test file for use by tests
-    fetch_open("NormalizationTest.txt", "../tests/")
+    normalization_tests = load_normalization_tests()
 
     print("------------------------")
     total_size = 0
@@ -1957,6 +2106,7 @@ def main(module_path: str):
         non_transparent_zero_widths=non_transparent_zero_widths,
         ligature_transparent=ligature_transparent,
         solidus_transparent=solidus_transparent,
+        normalization_tests=normalization_tests,
     )
     print(f'Wrote to "{module_path}"')
 

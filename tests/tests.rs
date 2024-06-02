@@ -8,11 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-};
-
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 macro_rules! assert_width {
@@ -21,16 +16,6 @@ macro_rules! assert_width {
         #[cfg(feature = "cjk")]
         assert_eq!($s.width_cjk(), $cjk, "{:?} has the wrong width (CJK)", $s);
     }};
-}
-
-macro_rules! assert_equal_width {
-    ($s0:expr, $s1:expr $(, $($rest:tt)*)?) => {
-        assert_eq!($s0.width(), $s1.width(), "Width of {:?} differs from {:?}", $s0, $s1);
-        #[cfg(feature = "cjk")]
-        assert_eq!($s0.width(), $s1.width(), "Width of {:?} differs from {:?} (CJK)", $s0, $s1);
-
-        $(assert_equal_width!($s0, $($rest)*);)?
-    };
 }
 
 #[test]
@@ -152,36 +137,6 @@ fn test_devanagari_caret() {
 }
 
 #[test]
-fn test_canonical_equivalence() {
-    let norm_file = BufReader::new(
-        File::open("tests/NormalizationTest.txt")
-            .expect("run `unicode.py` first to download `NormalizationTest.txt`"),
-    );
-    for line in norm_file.lines() {
-        let line = line.unwrap();
-        if line.is_empty() || line.starts_with('#') || line.starts_with('@') {
-            continue;
-        }
-
-        let mut forms_iter = line.split(';').map(|substr| -> String {
-            substr
-                .split(' ')
-                .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
-                .collect()
-        });
-
-        let orig = forms_iter.next().unwrap();
-        let nfc = forms_iter.next().unwrap();
-        let nfd = forms_iter.next().unwrap();
-        let nfkc = forms_iter.next().unwrap();
-        let nfkd = forms_iter.next().unwrap();
-
-        assert_equal_width!(orig, nfc, nfd);
-        assert_equal_width!(nfkc, nfkd);
-    }
-}
-
-#[test]
 fn test_solidus_overlay() {
     assert_width!("<\u{338}", 1, 2);
     assert_width!("=\u{338}", 1, 2);
@@ -197,6 +152,8 @@ fn test_solidus_overlay() {
     assert_width!("\u{06B8}\u{338}\u{FE0F}\u{0627}", 1, 1);
     assert_width!("\u{06B8}\u{FE0E}\u{338}\u{0627}", 1, 1);
     assert_width!("\u{06B8}\u{FE0F}\u{338}\u{0627}", 1, 1);
+
+    assert_width!("=\u{338}\u{0627}", 2, 3);
 }
 
 #[test]
