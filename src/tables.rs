@@ -15,6 +15,8 @@
 pub const UNICODE_VERSION: (u8, u8, u8) = (15, 1, 0);
 
 pub mod charwidth {
+    use core::convert::TryFrom;
+
     /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c` by
     /// consulting a multi-level lookup table.
     /// If `is_cjk == true`, ambiguous width characters are treated as double width; otherwise,
