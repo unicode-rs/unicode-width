@@ -158,7 +158,7 @@ fn single_char_width(c: char, is_cjk: bool) -> Option<usize> {
             // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
             Some(1)
         } else {
-            // U+0001 to U+0020 (exclusive) are control codes
+            // U+0000 to U+0020 (exclusive) are control codes
             None
         }
     } else if c >= '\u{A0}' {
