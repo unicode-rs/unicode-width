@@ -27,7 +27,13 @@ jobs:
     - name: Check formatting
       run: cargo fmt --check
     - name: Check clippy
-      run: cargo clippy --lib --tests
+      run: cargo clippy --verbose --lib --tests
+    - name: Build (no default features)
+      run: cargo build --verbose --no-default-features
+    - name: Run tests (no default features)
+      run: cargo test --verbose --no-default-features
+    - name: Check clippy (no default features)
+      run: cargo clippy --verbose --lib --tests --no-default-features
 
   regen:
     runs-on: ubuntu-latest
@@ -37,6 +43,6 @@ jobs:
       with:
         python-version: '3.12'
     - name: Regen
-      run: rm tests/NormalizationTest.txt && cd scripts && python3 unicode.py
+      run: rm tests/emoji-test.txt && cd scripts && python3 unicode.py
     - name: Diff
       run: git update-index --refresh && git diff-index --quiet HEAD --
