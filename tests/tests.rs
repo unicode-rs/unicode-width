@@ -588,6 +588,13 @@ fn emoji_test_file() {
     }
 }
 
+#[test]
+fn ambiguous_line_break() {
+    assert_width!("\u{24EA}", 1, 2);
+    assert_width!("\u{2616}", 1, 2);
+    assert_width!("\u{2780}", 1, 2);
+}
+
 // Test traits are unsealed
 
 #[cfg(feature = "cjk")]
