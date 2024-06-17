@@ -122,8 +122,7 @@
 //!       - Has an [`East_Asian_Width`] of [`Ambiguous`], or
 //!         has a canonical decomposition to an [`Ambiguous`] character followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY], or
 //!         is [`'\u{0387}'` GREEK ANO TELEIA](https://util.unicode.org/UnicodeJsps/character.jsp?a=0387), and
-//!       - Does not have a [`General_Category`] of `Modifier_Symbol`, and
-//!       - Does not have a [`Script`] of `Latin`, `Greek`, or `Cyrillic`, or is a Roman numeral in the range `'\u{2160}'..='\u{217F}'`.
+//!       - Does not have a [`General_Category`] of `Letter` or `Modifier_Symbol`.
 //!    7. All other characters have width 1.
 //!
 //! [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY]: https://util.unicode.org/UnicodeJsps/character.jsp?a=0338
