@@ -442,10 +442,10 @@ def load_east_asian_widths() -> list[EastAsianWidth]:
         ),
     )
 
-    # Ambiguous `Modifier_Symbol`s are narrow
+    # Ambiguous `Modifier_Letter`s and `Modifier_Symbol`s are narrow
     load_property(
         "extracted/DerivedGeneralCategory.txt",
-        "Sk",
+        r"(:?Lm|Sk)",
         lambda cp: (
             operator.setitem(width_map, cp, EastAsianWidth.NARROW)
             if width_map[cp] == EastAsianWidth.AMBIGUOUS

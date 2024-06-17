@@ -79,6 +79,14 @@ fn test_default_ignorable() {
 }
 
 #[test]
+fn test_ambiguous() {
+    assert_width!("\u{B7}", 1, 2);
+    assert_width!("\u{0387}", 1, 2);
+    assert_width!("\u{A8}", 1, 1);
+    assert_width!("\u{02C9}", 1, 1);
+}
+
+#[test]
 fn test_jamo() {
     assert_width!('\u{1100}', Some(2), Some(2));
     assert_width!('\u{A97C}', Some(2), Some(2));
