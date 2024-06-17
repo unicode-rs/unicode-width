@@ -18,7 +18,6 @@
 # - NormalizationTest.txt (for tests only)
 # - PropList.txt
 # - ReadMe.txt
-# - Scripts.txt
 # - UnicodeData.txt
 # - auxiliary/GraphemeBreakProperty.txt
 # - emoji/emoji-data.txt
@@ -430,22 +429,10 @@ def load_east_asian_widths() -> list[EastAsianWidth]:
             # Catch any leftover codepoints and assign them implicit Neutral/narrow width.
             width_map.append(EastAsianWidth.NARROW)
 
-    # Characters from alphabetic scripts are narrow
-    load_property(
-        "Scripts.txt",
-        r"(?:Latin|Greek|Cyrillic)",
-        lambda cp: (
-            operator.setitem(width_map, cp, EastAsianWidth.NARROW)
-            if width_map[cp] == EastAsianWidth.AMBIGUOUS
-            and not (0x2160 <= cp <= 0x217F)  # Roman numerals remain ambiguous
-            else None
-        ),
-    )
-
-    # Ambiguous `Modifier_Letter`s and `Modifier_Symbol`s are narrow
+    # Ambiguous `Letter`s and `Modifier_Symbol`s are narrow
     load_property(
         "extracted/DerivedGeneralCategory.txt",
-        r"(:?Lm|Sk)",
+        r"(:?Lu|Ll|Lt|Lm|Lo|Sk)",
         lambda cp: (
             operator.setitem(width_map, cp, EastAsianWidth.NARROW)
             if width_map[cp] == EastAsianWidth.AMBIGUOUS
