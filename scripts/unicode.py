@@ -20,6 +20,7 @@
 # - ReadMe.txt
 # - Scripts.txt
 # - UnicodeData.txt
+# - auxiliary/GraphemeBreakProperty.txt
 # - emoji/emoji-data.txt
 # - emoji/emoji-variation-sequences.txt
 # - extracted/DerivedGeneralCategory.txt
@@ -525,6 +526,21 @@ def load_zero_widths() -> list[bool]:
     zw_map[0x0890] = True
     zw_map[0x0891] = True
     zw_map[0x08E2] = True
+
+    # `[:Grapheme_Cluster_Break=Prepend:]-[:Prepended_Concatenation_Mark:]`
+    gcb_prepend = set()
+    load_property(
+        "auxiliary/GraphemeBreakProperty.txt",
+        "Prepend",
+        lambda cp: gcb_prepend.add(cp),
+    )
+    load_property(
+        "PropList.txt",
+        "Prepended_Concatenation_Mark",
+        lambda cp: gcb_prepend.remove(cp),
+    )
+    for cp in gcb_prepend:
+        zw_map[cp] = True
 
     # HANGUL CHOSEONG FILLER
     # U+115F is a `Default_Ignorable_Code_Point`, and therefore would normally have
