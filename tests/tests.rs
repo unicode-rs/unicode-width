@@ -111,6 +111,12 @@ fn test_prepended_concatenation_marks() {
 }
 
 #[test]
+fn test_gcb_prepend() {
+    assert_width!("ൎഉ", 1, 1);
+    assert_width!("\u{11A89}", 0, 0);
+}
+
+#[test]
 fn test_interlinear_annotation_chars() {
     assert_width!('\u{FFF9}', Some(1), Some(1));
     assert_width!('\u{FFFA}', Some(1), Some(1));
