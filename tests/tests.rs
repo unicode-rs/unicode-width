@@ -214,23 +214,18 @@ fn test_control_line_break() {
     assert_width!('\r', None, None);
     assert_width!('\n', None, None);
     assert_width!("\r", 1, 1);
-    // This is 0 due to #60
-    assert_width!("\n", 0, 0);
-    assert_width!("\r\n", 0, 0);
+    assert_width!("\n", 1, 1);
+    assert_width!("\r\n", 1, 1);
     assert_width!("\0", 1, 1);
-    assert_width!("1\t2\r\n3\u{85}4", 6, 6);
-    assert_width!("\r\u{FE0F}\n", 1, 1);
-    assert_width!("\r\u{200D}\n", 1, 1);
+    assert_width!("1\t2\r\n3\u{85}4", 7, 7);
+    assert_width!("\r\u{FE0F}\n", 2, 2);
+    assert_width!("\r\u{200D}\n", 2, 2);
 }
 
 #[test]
 fn char_str_consistent() {
     let mut s = String::with_capacity(4);
     for c in '\0'..=char::MAX {
-        // Newlines are special cased (#60)
-        if c == '\n' {
-            continue;
-        }
         s.clear();
         s.push(c);
         assert_eq!(c.width().unwrap_or(1), s.width());
@@ -423,10 +418,6 @@ fn test_khmer_coeng() {
             assert_width!(format!("\u{17D2}{c}"), 0, 0);
             assert_width!(format!("\u{17D2}\u{200D}\u{200D}{c}"), 0, 0);
         } else {
-            // Newlines are special cased (#60)
-            if c == '\n' {
-                continue;
-            }
             assert_width!(
                 format!("\u{17D2}{c}"),
                 c.width().unwrap_or(1),
@@ -595,11 +586,6 @@ fn emoji_test_file() {
             assert_width!(emoji, 2, 2);
         }
     }
-}
-
-#[test]
-fn test_newline_zero_issue_60() {
-    assert_width!("a\na", 2, 2);
 }
 
 // Test traits are unsealed
