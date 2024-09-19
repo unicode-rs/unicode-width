@@ -1281,10 +1281,7 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
     s += """
     if c <= '\\u{A0}' {
         match c {
-            // According to the spec, LF should be width 1, which is how it is often rendered when it is forced to have a single-line rendering
-            // However, this makes it harder to use this crate to calculate line breaks, and breaks assumptions of downstream crates.
-            // https://github.com/unicode-rs/unicode-width/issues/60
-            '\\n' => (0, WidthInfo::LINE_FEED),
+            '\\n' => (1, WidthInfo::LINE_FEED),
             '\\r' if next_info == WidthInfo::LINE_FEED => (0, WidthInfo::DEFAULT),
             _ => (1, WidthInfo::DEFAULT),
         }
