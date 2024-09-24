@@ -38,7 +38,7 @@ from collections import defaultdict
 from itertools import batched
 from typing import Callable, Iterable
 
-UNICODE_VERSION = "15.1.0"
+UNICODE_VERSION = "16.0.0"
 """The version of the Unicode data files to download."""
 
 NUM_CODEPOINTS = 0x110000
