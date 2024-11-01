@@ -15,14 +15,19 @@
 # - DerivedCoreProperties.txt
 # - EastAsianWidth.txt
 # - HangulSyllableType.txt
+# - LineBreak.txt
 # - NormalizationTest.txt (for tests only)
 # - PropList.txt
 # - ReadMe.txt
 # - UnicodeData.txt
 # - auxiliary/GraphemeBreakProperty.txt
 # - emoji/emoji-data.txt
+# - emoji/emoji-test.txt (for tests only)
 # - emoji/emoji-variation-sequences.txt
+# - extracted/DerivedCombiningClass.txt
 # - extracted/DerivedGeneralCategory.txt
+# - extracted/DerivedJoiningGroup.txt
+# - extracted/DerivedJoiningType.txt
 #
 # Since this should not require frequent updates, we just store this
 # out-of-line and check the generated module into git.
@@ -428,6 +433,13 @@ def load_east_asian_widths() -> list[EastAsianWidth]:
         while len(width_map) < NUM_CODEPOINTS:
             # Catch any leftover codepoints and assign them implicit Neutral/narrow width.
             width_map.append(EastAsianWidth.NARROW)
+
+    # Characters with ambiguous line breaking are ambiguous
+    load_property(
+        "LineBreak.txt",
+        "AI",
+        lambda cp: (operator.setitem(width_map, cp, EastAsianWidth.AMBIGUOUS)),
+    )
 
     # Ambiguous `Letter`s and `Modifier_Symbol`s are narrow
     load_property(

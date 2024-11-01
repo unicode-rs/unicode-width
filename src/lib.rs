@@ -119,9 +119,11 @@
 //!    5. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!       with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
 //!    6. Characters fulfilling all of the following conditions have width 2 in an East Asian context, and width 1 otherwise:
-//!       - Has an [`East_Asian_Width`] of [`Ambiguous`], or
-//!         has a canonical decomposition to an [`Ambiguous`] character followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY], or
-//!         is [`'\u{0387}'` GREEK ANO TELEIA](https://util.unicode.org/UnicodeJsps/character.jsp?a=0387), and
+//!       - Fulfills one of the following conditions:
+//!         - Has an [`East_Asian_Width`] of [`Ambiguous`], or
+//!         - Has a [`Line_Break`] of [`AI`], or
+//!         - Has a canonical decomposition to an [`Ambiguous`] character followed by [`'\u{0338}'` COMBINING LONG SOLIDUS OVERLAY], or
+//!         - Is [`'\u{0387}'` GREEK ANO TELEIA](https://util.unicode.org/UnicodeJsps/character.jsp?a=0387); and
 //!       - Does not have a [`General_Category`] of `Letter` or `Modifier_Symbol`.
 //!    7. All other characters have width 1.
 //!
@@ -138,12 +140,15 @@
 //! [`Hangul_Syllable_Type`]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G45593
 //! [`Joining_Group`]: https://www.unicode.org/versions/Unicode14.0.0/ch09.pdf#G36862
 //! [`Joining_Type`]: http://www.unicode.org/versions/Unicode15.0.0/ch09.pdf#G50009
+//! [`Line_Break`]: https://www.unicode.org/reports/tr14/#LD5
 //! [`Prepended_Concatenation_Mark`]: https://www.unicode.org/versions/Unicode15.0.0/ch23.pdf#G37908
 //! [`Script`]: https://www.unicode.org/reports/tr24/#Script
 //!
 //! [`Fullwidth`]: https://www.unicode.org/reports/tr11/#ED2
 //! [`Wide`]: https://www.unicode.org/reports/tr11/#ED4
 //! [`Ambiguous`]: https://www.unicode.org/reports/tr11/#ED6
+//!
+//! [`AI`]: https://www.unicode.org/reports/tr14/#AI
 //!
 //! [combining marks]: https://www.unicode.org/versions/Unicode15.0.0/ch03.pdf#G30602
 //!
