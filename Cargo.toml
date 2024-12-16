@@ -23,6 +23,7 @@ Determine displayed width of `char` and `str` types
 according to Unicode Standard Annex #11 rules.
 """
 edition = "2021"
+rust-version = "1.66"
 
 exclude = ["/.github/*"]
 

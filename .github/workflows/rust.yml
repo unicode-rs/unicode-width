@@ -46,3 +46,12 @@ jobs:
       run: rm tests/emoji-test.txt && cd scripts && python3 unicode.py
     - name: Diff
       run: git update-index --refresh && git diff-index --quiet HEAD --
+
+  msrv:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.66.0
+      - run: cargo check --lib --features core,std
