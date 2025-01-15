@@ -62,6 +62,8 @@
 //!      - Outside of an East Asian context, [text presentation sequences] have width 1 if their base character:
 //!        - Has the [`Emoji_Presentation`] property, and
 //!        - Is not in the [Enclosed Ideographic Supplement] block.
+//!    - [`'\u{2018}'`, `'\u{2019}'`, `'\u{201C}'`, and `'\u{201D}'`][General Punctuation] always have width 1 when followed by '\u{FE00}',
+//!      and width 2 when followed by '\u{FE01}'.
 //!    - Script-specific ligatures:
 //!      - For all the following ligatures, the insertion of any number of [default-ignorable][`Default_Ignorable_Code_Point`]
 //!        [combining marks] anywhere in the sequence will not change the total width. In addition, for all non-Arabic
@@ -75,7 +77,7 @@
 //!      - **[Khmer]**: Coeng signs consisting of `'\u{17D2}'` followed by a character in
 //!        `'\u{1780}'..='\u{1782}' | '\u{1784}'..='\u{1787}' | '\u{1789}'..='\u{178C}' | '\u{178E}'..='\u{1793}' | '\u{1795}'..='\u{1798}' | '\u{179B}'..='\u{179D}' | '\u{17A0}' | '\u{17A2}'  | '\u{17A7}' | '\u{17AB}'..='\u{17AC}' | '\u{17AF}'`
 //!        have width 0.
-//!      - **[Kirat Rai]**: Any sequence canonically equivalent to `\u{16D68}`, `\u{16D69}`, or `\u{16D6A}` has total width 1.
+//!      - **[Kirat Rai]**: Any sequence canonically equivalent to `'\u{16D68}'`, `'\u{16D69}'`, or `'\u{16D6A}'` has total width 1.
 //!      - **[Lisu]**: Tone letter combinations consisting of a character in the range `'\u{A4F8}'..='\u{A4FB}'`
 //!        followed by a character in the range `'\u{A4FC}'..='\u{A4FD}'` have width 1. For example: `ꓹꓼ`
 //!      - **[Old Turkic]**: `"\u{10C32}\u{200D}\u{10C03}"` (`𐰲‍𐰃`) has total width 1.
@@ -158,6 +160,7 @@
 //! [Emoji presentation sequences]: https://unicode.org/reports/tr51/#def_emoji_presentation_sequence
 //! [text presentation sequences]: https://unicode.org/reports/tr51/#def_text_presentation_sequence
 //!
+//! [General Punctuation]: https://www.unicode.org/charts/PDF/Unicode-16.0/U160-2000.pdf
 //! [Enclosed Ideographic Supplement]: https://unicode.org/charts/nameslist/n_1F200.html
 //!
 //! [Arabic]: https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-9/#G7480

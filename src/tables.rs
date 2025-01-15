@@ -15,6 +15,8 @@ use core::cmp::Ordering;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct WidthInfo(u16);
 
+const LIGATURE_TRANSPARENT_MASK: u16 = 0b0010_0000_0000_0000;
+
 impl WidthInfo {
     /// No special handling necessary
     const DEFAULT: Self = Self(0);
@@ -42,6 +44,7 @@ impl WidthInfo {
     const TAG_A6_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011110);
     const KIRAT_RAI_VOWEL_SIGN_E: Self = Self(0b0000000000100000);
     const KIRAT_RAI_VOWEL_SIGN_AI: Self = Self(0b0000000000100001);
+    const VARIATION_SELECTOR_1_OR_2: Self = Self(0b0000001000000000);
     const VARIATION_SELECTOR_15: Self = Self(0b0100000000000000);
     const VARIATION_SELECTOR_16: Self = Self(0b1000000000000000);
     const JOINING_GROUP_ALEF: Self = Self(0b0011000011111111);
@@ -75,20 +78,24 @@ impl WidthInfo {
 
     /// Has top bit set
     fn is_emoji_presentation(self) -> bool {
-        (self.0 & 0b1000_0000_0000_0000) == 0b1000_0000_0000_0000
+        (self.0 & WidthInfo::VARIATION_SELECTOR_16.0) == WidthInfo::VARIATION_SELECTOR_16.0
     }
 
-    /// Has top bit set
     fn is_zwj_emoji_presentation(self) -> bool {
         (self.0 & 0b1011_0000_0000_0000) == 0b1001_0000_0000_0000
     }
 
     /// Set top bit
     fn set_emoji_presentation(self) -> Self {
-        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK
             || (self.0 & 0b1001_0000_0000_0000) == 0b0001_0000_0000_0000
         {
-            Self(self.0 | 0b1000_0000_0000_0000)
+            Self(
+                self.0
+                    | WidthInfo::VARIATION_SELECTOR_16.0
+                        & !WidthInfo::VARIATION_SELECTOR_15.0
+                        & !WidthInfo::VARIATION_SELECTOR_1_OR_2.0,
+            )
         } else {
             Self::VARIATION_SELECTOR_16
         }
@@ -96,8 +103,8 @@ impl WidthInfo {
 
     /// Clear top bit
     fn unset_emoji_presentation(self) -> Self {
-        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000 {
-            Self(self.0 & 0b0111_1111_1111_1111)
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {
+            Self(self.0 & !WidthInfo::VARIATION_SELECTOR_16.0)
         } else {
             Self::DEFAULT
         }
@@ -105,21 +112,50 @@ impl WidthInfo {
 
     /// Has 2nd bit set
     fn is_text_presentation(self) -> bool {
-        (self.0 & 0b0100_0000_0000_0000) == 0b0100_0000_0000_0000
+        (self.0 & WidthInfo::VARIATION_SELECTOR_15.0) == WidthInfo::VARIATION_SELECTOR_15.0
     }
 
     /// Set 2nd bit
     fn set_text_presentation(self) -> Self {
-        if (self.0 & 0b0010_0000_0000_0000) == 0b0010_0000_0000_0000 {
-            Self(self.0 | 0b0100_0000_0000_0000)
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {
+            Self(
+                self.0
+                    | WidthInfo::VARIATION_SELECTOR_15.0
+                        & !WidthInfo::VARIATION_SELECTOR_16.0
+                        & !WidthInfo::VARIATION_SELECTOR_1_OR_2.0,
+            )
         } else {
-            Self(0b0100_0000_0000_0000)
+            Self(WidthInfo::VARIATION_SELECTOR_15.0)
         }
     }
 
     /// Clear 2nd bit
     fn unset_text_presentation(self) -> Self {
-        Self(self.0 & 0b1011_1111_1111_1111)
+        Self(self.0 & !WidthInfo::VARIATION_SELECTOR_15.0)
+    }
+
+    /// Has 7th bit set
+    fn is_vs1_2(self) -> bool {
+        (self.0 & WidthInfo::VARIATION_SELECTOR_1_OR_2.0) == WidthInfo::VARIATION_SELECTOR_1_OR_2.0
+    }
+
+    /// Set 7th bit
+    fn set_vs1_2(self) -> Self {
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {
+            Self(
+                self.0
+                    | WidthInfo::VARIATION_SELECTOR_1_OR_2.0
+                        & !WidthInfo::VARIATION_SELECTOR_15.0
+                        & !WidthInfo::VARIATION_SELECTOR_16.0,
+            )
+        } else {
+            Self(WidthInfo::VARIATION_SELECTOR_1_OR_2.0)
+        }
+    }
+
+    /// Clear 7th bit
+    fn unset_vs1_2(self) -> Self {
+        Self(self.0 & !WidthInfo::VARIATION_SELECTOR_1_OR_2.0)
     }
 }
 
@@ -167,6 +203,7 @@ fn lookup_width(c: char) -> (u8, WidthInfo) {
             '\u{1A10}' => (1, WidthInfo::BUGINESE_LETTER_YA),
             '\u{2D31}'..='\u{2D6F}' => (1, WidthInfo::TIFINAGH_CONSONANT),
             '\u{A4FC}'..='\u{A4FD}' => (1, WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU),
+            '\u{FE01}' => (0, WidthInfo::VARIATION_SELECTOR_1_OR_2),
             '\u{FE0E}' => (0, WidthInfo::VARIATION_SELECTOR_15),
             '\u{FE0F}' => (0, WidthInfo::VARIATION_SELECTOR_16),
             '\u{10C03}' => (1, WidthInfo::OLD_TURKIC_LETTER_ORKHON_I),
@@ -229,6 +266,9 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
             if c == '\u{FE0F}' {
                 return (0, next_info.set_emoji_presentation());
             }
+            if c == '\u{FE01}' {
+                return (0, next_info.set_vs1_2());
+            }
             if c == '\u{FE0E}' {
                 return (0, next_info.set_text_presentation());
             }
@@ -237,6 +277,12 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
                     return (1, WidthInfo::DEFAULT);
                 } else {
                     next_info = next_info.unset_text_presentation();
+                }
+            } else if next_info.is_vs1_2() {
+                if matches!(c, '\u{2018}' | '\u{2019}' | '\u{201C}' | '\u{201D}') {
+                    return (2, WidthInfo::DEFAULT);
+                } else {
+                    next_info = next_info.unset_vs1_2();
                 }
             }
             if next_info.is_ligature_transparent() {
@@ -469,6 +515,7 @@ fn lookup_width_cjk(c: char) -> (u8, WidthInfo) {
             '\u{1A10}' => (1, WidthInfo::BUGINESE_LETTER_YA),
             '\u{2D31}'..='\u{2D6F}' => (1, WidthInfo::TIFINAGH_CONSONANT),
             '\u{A4FC}'..='\u{A4FD}' => (1, WidthInfo::LISU_TONE_LETTER_MYA_NA_JEU),
+            '\u{FE00}' => (0, WidthInfo::VARIATION_SELECTOR_1_OR_2),
             '\u{FE0F}' => (0, WidthInfo::VARIATION_SELECTOR_16),
             '\u{10C03}' => (1, WidthInfo::OLD_TURKIC_LETTER_ORKHON_I),
             '\u{16D67}' => (1, WidthInfo::KIRAT_RAI_VOWEL_SIGN_E),
@@ -538,6 +585,16 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
         if next_info != WidthInfo::DEFAULT {
             if c == '\u{FE0F}' {
                 return (0, next_info.set_emoji_presentation());
+            }
+            if c == '\u{FE00}' {
+                return (0, next_info.set_vs1_2());
+            }
+            if next_info.is_vs1_2() {
+                if matches!(c, '\u{2018}' | '\u{2019}' | '\u{201C}' | '\u{201D}') {
+                    return (1, WidthInfo::DEFAULT);
+                } else {
+                    next_info = next_info.unset_vs1_2();
+                }
             }
             if next_info.is_ligature_transparent() {
                 if c == '\u{200D}' {
@@ -1472,7 +1529,7 @@ static WIDTH_LEAVES: Align32<[[u8; 32]; WIDTH_LEAVES_LEN]> = Align32([
         0x55, 0x55,
     ],
     [
-        0x00, 0x00, 0x00, 0xF0, 0xAA, 0xAA, 0x5A, 0x55, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xAA, 0xAA,
+        0x0C, 0x00, 0x00, 0xF0, 0xAA, 0xAA, 0x5A, 0x55, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xAA, 0xAA,
         0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x6A, 0xAA, 0xAA, 0xAA, 0xAA, 0x6A, 0xAA, 0x55, 0x55, 0x55,
         0x55, 0x55,
     ],
@@ -2012,7 +2069,7 @@ static WIDTH_LEAVES: Align32<[[u8; 32]; WIDTH_LEAVES_LEN]> = Align32([
     ],
     #[cfg(feature = "cjk")]
     [
-        0x00, 0x00, 0x00, 0xC0, 0xAA, 0xAA, 0x5A, 0x55, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xAA, 0xAA,
+        0x03, 0x00, 0x00, 0xC0, 0xAA, 0xAA, 0x5A, 0x55, 0x00, 0x00, 0x00, 0x00, 0xAA, 0xAA, 0xAA,
         0xAA, 0xAA, 0xAA, 0xAA, 0xAA, 0x6A, 0xAA, 0xAA, 0xAA, 0xAA, 0x6A, 0xAA, 0x55, 0x55, 0x55,
         0x55, 0x55,
     ],
@@ -2666,7 +2723,7 @@ mod tests {
         }
     }
 
-    static NORMALIZATION_TEST_WIDTHS: [WidthInfo; 40] = [
+    static NORMALIZATION_TEST_WIDTHS: [WidthInfo; 41] = [
         WidthInfo::DEFAULT,
         WidthInfo::LINE_FEED,
         WidthInfo::EMOJI_MODIFIER,
@@ -2692,6 +2749,7 @@ mod tests {
         WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION,
         WidthInfo::KIRAT_RAI_VOWEL_SIGN_E,
         WidthInfo::KIRAT_RAI_VOWEL_SIGN_AI,
+        WidthInfo::VARIATION_SELECTOR_1_OR_2,
         WidthInfo::VARIATION_SELECTOR_15,
         WidthInfo::VARIATION_SELECTOR_16,
         WidthInfo::JOINING_GROUP_ALEF,
@@ -2710,7 +2768,7 @@ mod tests {
     ];
 
     #[cfg(feature = "cjk")]
-    static NORMALIZATION_TEST_WIDTHS_CJK: [WidthInfo; 41] = [
+    static NORMALIZATION_TEST_WIDTHS_CJK: [WidthInfo; 42] = [
         WidthInfo::DEFAULT,
         WidthInfo::LINE_FEED,
         WidthInfo::EMOJI_MODIFIER,
@@ -2736,6 +2794,7 @@ mod tests {
         WidthInfo::TAG_A6_END_ZWJ_EMOJI_PRESENTATION,
         WidthInfo::KIRAT_RAI_VOWEL_SIGN_E,
         WidthInfo::KIRAT_RAI_VOWEL_SIGN_AI,
+        WidthInfo::VARIATION_SELECTOR_1_OR_2,
         WidthInfo::VARIATION_SELECTOR_16,
         WidthInfo::JOINING_GROUP_ALEF,
         WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY,
