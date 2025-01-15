@@ -43,7 +43,7 @@ from collections import defaultdict
 from itertools import batched
 from typing import Callable, Iterable
 
-UNICODE_VERSION = "15.1.0"
+UNICODE_VERSION = "16.0.0"
 """The version of the Unicode data files to download."""
 
 NUM_CODEPOINTS = 0x110000
@@ -263,6 +263,12 @@ class WidthState(enum.IntEnum):
 
     TAG_A6_END_ZWJ_EMOJI_PRESENTATION = 0b0000_0000_0001_1110
     "(\\uE0061..=\\uE007A){6} \\uE007F \\u200D `Emoji_Presentation`"
+
+    # Kirat Rai
+    KIRAT_RAI_VOWEL_SIGN_E = 0b0000_0000_0010_0000
+    "\\u16D67 (\\u16D67 \\u16D67)+ and canonical equivalents"
+    KIRAT_RAI_VOWEL_SIGN_AI = 0b0000_0000_0010_0001
+    "(\\u16D68)+ and canonical equivalents"
 
     # VARIATION SELECTORS
 
@@ -639,6 +645,8 @@ def load_width_maps() -> tuple[list[WidthState], list[WidthState]]:
         ([0xA4FD], WidthState.LISU_TONE_LETTER_MYA_NA_JEU),
         ([0xFE0F], WidthState.VARIATION_SELECTOR_16),
         ([0x10C03], WidthState.OLD_TURKIC_LETTER_ORKHON_I),
+        ([0x16D67], WidthState.KIRAT_RAI_VOWEL_SIGN_E),
+        ([0x16D68], WidthState.KIRAT_RAI_VOWEL_SIGN_AI),
         (emoji_presentation, WidthState.EMOJI_PRESENTATION),
         (emoji_modifiers, WidthState.EMOJI_MODIFIER),
         (regional_indicators, WidthState.REGIONAL_INDICATOR),
@@ -1494,6 +1502,22 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
                     if lookup_width{cjk_lo}(c).1 == WidthInfo::EMOJI_PRESENTATION =>
                 {{
                     return (0, WidthInfo::EMOJI_PRESENTATION)
+                }}
+
+                (WidthInfo::KIRAT_RAI_VOWEL_SIGN_E, '\\u{{16D63}}') => {{
+                    return (0, WidthInfo::DEFAULT);
+                }}
+                (WidthInfo::KIRAT_RAI_VOWEL_SIGN_E, '\\u{{16D67}}') => {{
+                    return (0, WidthInfo::KIRAT_RAI_VOWEL_SIGN_AI);
+                }}
+                (WidthInfo::KIRAT_RAI_VOWEL_SIGN_E, '\\u{{16D68}}') => {{
+                    return (1, WidthInfo::KIRAT_RAI_VOWEL_SIGN_E);
+                }}
+                (WidthInfo::KIRAT_RAI_VOWEL_SIGN_E, '\\u{{16D69}}') => {{
+                    return (0, WidthInfo::DEFAULT);
+                }}
+                (WidthInfo::KIRAT_RAI_VOWEL_SIGN_AI, '\\u{{16D63}}') => {{
+                    return (0, WidthInfo::DEFAULT);
                 }}
 
                 // Fallback
