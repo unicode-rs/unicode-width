@@ -506,12 +506,6 @@ def load_zero_widths() -> list[bool]:
         lambda cp: operator.setitem(zw_map, cp, True),
     )
 
-    # Unicode spec bug: these should be `Grapheme_Cluster_Break=Extend`,
-    # as they canonically decompose to two characters with this property,
-    # but they aren't.
-    for c in [0x0CC0, 0x0CC7, 0x0CC8, 0x0CCA, 0x0CCB, 0x1B3B, 0x1B3D, 0x1B43]:
-        zw_map[c] = True
-
     # Treat `Hangul_Syllable_Type`s of `Vowel_Jamo` and `Trailing_Jamo`
     # as zero-width. This matches the behavior of glibc `wcwidth`.
     #
