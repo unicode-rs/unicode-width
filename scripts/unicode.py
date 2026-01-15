@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 #
-# Copyright 2011-2025 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2011-2026 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -1594,7 +1594,7 @@ def emit_module(
         os.remove(out_name)
     with open(out_name, "w", newline="\n", encoding="utf-8") as module:
         module.write(
-            """// Copyright 2012-2025 The Rust Project Developers. See the COPYRIGHT
+            """// Copyright 2012-2026 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
