@@ -13,7 +13,7 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
+use unicode_width::{char_iter_width, UnicodeWidthChar, UnicodeWidthStr};
 
 macro_rules! assert_width {
     ($s:expr, $nocjk:expr, $cjk:expr $(,)?) => {{
@@ -647,6 +647,11 @@ fn test_vs1_vs2_vs3() {
             );
         }
     }
+}
+
+#[test]
+fn test_char_iter() {
+    assert_eq!(char_iter_width(['a', 'b', '🔬'].into_iter()), 4)
 }
 
 // Test traits are unsealed

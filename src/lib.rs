@@ -248,12 +248,23 @@ pub trait UnicodeWidthStr: private::Sealed {
 impl UnicodeWidthStr for str {
     #[inline]
     fn width(&self) -> usize {
-        tables::str_width(self)
+        tables::str_width(self.chars())
     }
 
     #[cfg(feature = "cjk")]
     #[inline]
     fn width_cjk(&self) -> usize {
-        tables::str_width_cjk(self)
+        tables::str_width_cjk(self.chars())
     }
+}
+
+/// Like [`UnicodeWidthStr::width`] but for iterators over [`char`].
+pub fn char_iter_width<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {
+    tables::str_width(s)
+}
+
+/// Like [`UnicodeWidthStr::width_cjk`] but for iterators over [`char`].
+#[cfg(feature = "cjk")]
+pub fn char_iter_width_cjk<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {
+    tables::str_width_cjk(s)
 }

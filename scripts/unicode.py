@@ -1556,16 +1556,15 @@ fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {{
 }}
 
 {cfg}#[inline]
-pub fn str_width{cjk_lo}(s: &str) -> usize {{
-    s.chars()
-        .rfold(
-            (0, WidthInfo::DEFAULT),
-            |(sum, next_info), c| -> (usize, WidthInfo) {{
-                let (add, info) = width_in_str{cjk_lo}(c, next_info);
-                (sum.wrapping_add_signed(isize::from(add)), info)
-            }},
-        )
-        .0
+pub fn str_width<S: DoubleEndedIterator<Item = char>>{cjk_lo}(s: S) -> usize {{
+    s.rfold(
+        (0, WidthInfo::DEFAULT),
+        |(sum, next_info), c| -> (usize, WidthInfo) {{
+            let (add, info) = width_in_str{cjk_lo}(c, next_info);
+            (sum.wrapping_add_signed(isize::from(add)), info)
+        }},
+    )
+    .0
 }}
 """
 

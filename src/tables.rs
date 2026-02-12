@@ -462,16 +462,15 @@ fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
 }
 
 #[inline]
-pub fn str_width(s: &str) -> usize {
-    s.chars()
-        .rfold(
-            (0, WidthInfo::DEFAULT),
-            |(sum, next_info), c| -> (usize, WidthInfo) {
-                let (add, info) = width_in_str(c, next_info);
-                (sum.wrapping_add_signed(isize::from(add)), info)
-            },
-        )
-        .0
+pub fn str_width<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {
+    s.rfold(
+        (0, WidthInfo::DEFAULT),
+        |(sum, next_info), c| -> (usize, WidthInfo) {
+            let (add, info) = width_in_str(c, next_info);
+            (sum.wrapping_add_signed(isize::from(add)), info)
+        },
+    )
+    .0
 }
 
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c` by
@@ -783,16 +782,15 @@ fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo) {
 
 #[cfg(feature = "cjk")]
 #[inline]
-pub fn str_width_cjk(s: &str) -> usize {
-    s.chars()
-        .rfold(
-            (0, WidthInfo::DEFAULT),
-            |(sum, next_info), c| -> (usize, WidthInfo) {
-                let (add, info) = width_in_str_cjk(c, next_info);
-                (sum.wrapping_add_signed(isize::from(add)), info)
-            },
-        )
-        .0
+pub fn str_width_cjk<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {
+    s.rfold(
+        (0, WidthInfo::DEFAULT),
+        |(sum, next_info), c| -> (usize, WidthInfo) {
+            let (add, info) = width_in_str_cjk(c, next_info);
+            (sum.wrapping_add_signed(isize::from(add)), info)
+        },
+    )
+    .0
 }
 
 /// Whether this character is a zero-width character with
