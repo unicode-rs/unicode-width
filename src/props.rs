@@ -21,7 +21,7 @@ pub use gen::*;
 /// See also [`is_ligature_transparent`], a near-subset of this (only ZWJ is excepted)
 /// which is transparent for non-Arabic ligatures.
 pub(crate) fn is_transparent_zero_width(c: char) -> bool {
-    if lookup_width(c).0 != 0 {
+    if crate::lookup::lookup_width(c).0 != 0 {
         // Not zero-width
         false
     } else {
@@ -46,7 +46,7 @@ pub(crate) fn is_transparent_zero_width(c: char) -> bool {
 /// U+0338 COMBINING LONG SOLIDUS OVERLAY
 /// on its base character.
 #[cfg(feature = "cjk")]
-pub(crate) fn is_solidus_transparent(c: char) -> bool {
+pub fn is_solidus_transparent(c: char) -> bool {
     let cp: u32 = c.into();
     is_ligature_transparent(c)
         || SOLIDUS_TRANSPARENT

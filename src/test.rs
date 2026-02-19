@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use crate::tables::*;
+use crate::lookup::*;
 use crate::width_info::WidthInfo;
 
 #[path = "gen/tables_test.rs"]
