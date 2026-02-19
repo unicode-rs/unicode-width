@@ -1290,30 +1290,7 @@ pub(crate) fn lookup_width{cjk_lo}(c: char) -> (u8, WidthInfo) {{
         }}
     }}
 }}
-
-/// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or
-/// `None` if `c` is a control character.
-/// Ambiguous width characters are treated as {ambig}.
-{cfg}#[inline]
-pub fn single_char_width{cjk_lo}(c: char) -> Option<usize> {{
-    if c < '\\u{{7F}}' {{
-        if c >= '\\u{{20}}' {{
-            // U+0020 to U+007F (exclusive) are single-width ASCII codepoints
-            Some(1)
-        }} else {{
-            // U+0000 to U+0020 (exclusive) are control codes
-            None
-        }}
-    }} else if c >= '\\u{{A0}}' {{
-        // No characters >= U+00A0 are control codes, so we can consult the lookup tables
-        Some(lookup_width{cjk_lo}(c).0.into())
-    }} else {{
-        // U+007F to U+00A0 (exclusive) are control codes
-        None
-    }}
-}}
 """
-
     return s
 
 
