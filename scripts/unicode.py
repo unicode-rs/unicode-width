@@ -1624,8 +1624,8 @@ def emit_props(
     emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
 ):
     """Outputs a Rust module to `module` containing generated property functions."""
-    module.write("use crate::tables::*;\n\n")
-    module.write("use core::cmp::Ordering;\n")
+    module.write("use crate::tables::*;\n")
+    module.write("use core::cmp::Ordering;\n\n")
 
     module.write(
         """/// Whether this character is a default-ignorable combining mark

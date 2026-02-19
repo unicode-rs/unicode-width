@@ -309,7 +309,6 @@ pub(crate) fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo)
         (ret.0 as i8, ret.1)
     }
 }
-
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c` by
 /// consulting a multi-level lookup table.
 ///
