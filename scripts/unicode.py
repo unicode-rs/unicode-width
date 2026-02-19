@@ -1407,30 +1407,27 @@ pub(crate) fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, Wi
                     return (0, WidthInfo::SOLIDUS_OVERLAY_ALEF);
                 }
                 // Arabic Lam-Alef ligature
-                (
-                    WidthInfo::JOINING_GROUP_ALEF | WidthInfo::SOLIDUS_OVERLAY_ALEF,
-                    """
-    else:
-        s += """
-                // Arabic Lam-Alef ligature
-                (
-                    WidthInfo::JOINING_GROUP_ALEF,
-                    """
-
-    tail = False
-    for lo, hi in joining_group_lam:
-        if tail:
-            s += " | "
-        tail = True
-        s += f"'\\u{{{lo:X}}}'"
-        if hi != lo:
-            s += f"..='\\u{{{hi:X}}}'"
-    s += """,
-                ) => return (0, WidthInfo::DEFAULT),
+                (WidthInfo::JOINING_GROUP_ALEF | WidthInfo::SOLIDUS_OVERLAY_ALEF, _)
+                    if is_joining_group_lam(c) =>
+                {
+                    return (0, WidthInfo::DEFAULT)
+                }
                 (WidthInfo::JOINING_GROUP_ALEF, _) if is_transparent_zero_width(c) => {
                     return (0, WidthInfo::JOINING_GROUP_ALEF);
                 }
+"""
+    else:
+        s += """
+                // Arabic Lam-Alef ligature
+                (WidthInfo::JOINING_GROUP_ALEF, _) if is_joining_group_lam(c) => {
+                    return (0, WidthInfo::DEFAULT)
+                }
+                (WidthInfo::JOINING_GROUP_ALEF, _) if is_transparent_zero_width(c) => {
+                    return (0, WidthInfo::JOINING_GROUP_ALEF);
+                }
+"""
 
+    s += """
                 // Hebrew Alef-ZWJ-Lamed ligature
                 (WidthInfo::ZWJ_HEBREW_LETTER_LAMED, '\\u{05D0}') => {
                     return (0, WidthInfo::DEFAULT);
@@ -1622,16 +1619,42 @@ def emit_props(
     emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
     text_presentation_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
     emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
+    joining_group_lam: list[tuple[Codepoint, Codepoint]],
 ):
     """Outputs a Rust module to `module` containing generated property functions."""
     module.write("use crate::tables::*;\n")
     module.write("use core::cmp::Ordering;\n\n")
 
     module.write(
-        """/// Whether this character is a default-ignorable combining mark
+        """/// Whether this character has Joining_Group=Lam.
+#[rustfmt::skip]
+pub fn is_joining_group_lam(c: char) -> bool {
+    matches!(
+        c,
+        """
+    )
+
+    tail = False
+    for lo, hi in joining_group_lam:
+        if tail:
+            module.write(" | ")
+        tail = True
+        module.write(f"'\\u{{{lo:X}}}'")
+        if hi != lo:
+            module.write(f"..='\\u{{{hi:X}}}'")
+
+    module.write(
+        """
+    )
+}
+
+/// Whether this character is a default-ignorable combining mark
 /// or ZWJ. These characters won't interrupt non-Arabic ligatures.
+#[rustfmt::skip]
 pub fn is_ligature_transparent(c: char) -> bool {
-    matches!(c, """
+    matches!(
+        c,
+        """
     )
 
     tail = False
@@ -1644,7 +1667,8 @@ pub fn is_ligature_transparent(c: char) -> bool {
             module.write(f"..='\\u{{{hi:X}}}'")
 
     module.write(
-        """)
+        """
+    )
 }
 
 /// Whether this character forms an [emoji presentation sequence]
@@ -2096,6 +2120,7 @@ def main(module_path: str):
             emoji_presentation_table,
             text_presentation_table,
             emoji_modifier_table,
+            joining_group_lam,
         ),
     )
     print(f'Wrote to "{PROPS_PATH}"')

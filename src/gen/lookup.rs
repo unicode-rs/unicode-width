@@ -145,10 +145,9 @@ pub(crate) fn width_in_str(c: char, mut next_info: WidthInfo) -> (i8, WidthInfo)
 
             match (next_info, c) {
                 // Arabic Lam-Alef ligature
-                (
-                    WidthInfo::JOINING_GROUP_ALEF,
-                    '\u{644}' | '\u{6B5}'..='\u{6B8}' | '\u{76A}' | '\u{8A6}' | '\u{8C7}',
-                ) => return (0, WidthInfo::DEFAULT),
+                (WidthInfo::JOINING_GROUP_ALEF, _) if is_joining_group_lam(c) => {
+                    return (0, WidthInfo::DEFAULT)
+                }
                 (WidthInfo::JOINING_GROUP_ALEF, _) if is_transparent_zero_width(c) => {
                     return (0, WidthInfo::JOINING_GROUP_ALEF);
                 }
@@ -451,10 +450,11 @@ pub(crate) fn width_in_str_cjk(c: char, mut next_info: WidthInfo) -> (i8, WidthI
                     return (0, WidthInfo::SOLIDUS_OVERLAY_ALEF);
                 }
                 // Arabic Lam-Alef ligature
-                (
-                    WidthInfo::JOINING_GROUP_ALEF | WidthInfo::SOLIDUS_OVERLAY_ALEF,
-                    '\u{644}' | '\u{6B5}'..='\u{6B8}' | '\u{76A}' | '\u{8A6}' | '\u{8C7}',
-                ) => return (0, WidthInfo::DEFAULT),
+                (WidthInfo::JOINING_GROUP_ALEF | WidthInfo::SOLIDUS_OVERLAY_ALEF, _)
+                    if is_joining_group_lam(c) =>
+                {
+                    return (0, WidthInfo::DEFAULT)
+                }
                 (WidthInfo::JOINING_GROUP_ALEF, _) if is_transparent_zero_width(c) => {
                     return (0, WidthInfo::JOINING_GROUP_ALEF);
                 }
