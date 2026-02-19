@@ -178,6 +178,7 @@
 
 pub use tables::UNICODE_VERSION;
 
+mod props;
 mod tables;
 mod width_info;
 

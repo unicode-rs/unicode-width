@@ -68,6 +68,9 @@ class OffsetType(enum.IntEnum):
 MODULE_PATH = "../src/tables.rs"
 """The path of the emitted Rust module (relative to the working directory)"""
 
+PROPS_PATH = "../src/gen/props.rs"
+"""The path of the emitted generated props (relative to the working directory)"""
+
 WIDTH_INFO_PATH = "../src/gen/width_info.rs"
 """The path of the emitted WidthInfo constants (relative to the working directory)"""
 
@@ -1245,7 +1248,7 @@ def lookup_fns(
 /// However, if you change the *actual structure* of the lookup tables (perhaps by editing the
 /// `make_tables` function in `unicode.py`) you must ensure that this code reflects those changes.
 {cfg}#[inline]
-fn lookup_width{cjk_lo}(c: char) -> (u8, WidthInfo) {{
+pub(crate) fn lookup_width{cjk_lo}(c: char) -> (u8, WidthInfo) {{
     let cp = c as usize;
 
     let t1_offset = WIDTH_ROOT{cjk_cap}.0[cp >> {TABLE_SPLITS[1]}];
@@ -1623,71 +1626,21 @@ impl WidthInfo {
     module.write("}\n")
 
 
-def emit_tables(
+def emit_props(
     module: IO[str],
-    unicode_version: tuple[int, int, int],
-    tables: list[Table],
-    special_ranges: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
-    special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
+    ligature_transparent: list[tuple[Codepoint, Codepoint]],
     emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
     text_presentation_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
     emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
-    joining_group_lam: list[tuple[Codepoint, Codepoint]],
-    non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
-    ligature_transparent: list[tuple[Codepoint, Codepoint]],
-    solidus_transparent: list[tuple[Codepoint, Codepoint]],
 ):
-    """Outputs a Rust module to `module` using table data from `tables`.
-    If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
-    """
-    module.write(
-        f"""use crate::width_info::WidthInfo;
-use core::cmp::Ordering;
-
-/// The version of [Unicode](http://www.unicode.org/)
-/// that this version of unicode-width is based on.
-pub const UNICODE_VERSION: (u8, u8, u8) = {unicode_version};
-"""
-    )
-
-    module.write(lookup_fns(False, special_ranges, joining_group_lam))
-    module.write(lookup_fns(True, special_ranges_cjk, joining_group_lam))
-
-    emoji_presentation_idx, emoji_presentation_leaves = emoji_presentation_table
-    text_presentation_idx, text_presentation_leaves = text_presentation_table
-    emoji_modifier_idx, emoji_modifier_leaves = emoji_modifier_table
+    """Outputs a Rust module to `module` containing generated property functions."""
+    module.write("use crate::tables::*;\n\n")
+    module.write("use core::cmp::Ordering;\n")
 
     module.write(
-        """
-/// Whether this character is a zero-width character with
-/// `Joining_Type=Transparent`. Used by the Alef-Lamed ligatures.
-/// See also [`is_ligature_transparent`], a near-subset of this (only ZWJ is excepted)
-/// which is transparent for non-Arabic ligatures.
-fn is_transparent_zero_width(c: char) -> bool {
-    if lookup_width(c).0 != 0 {
-        // Not zero-width
-        false
-    } else {
-        let cp: u32 = c.into();
-        NON_TRANSPARENT_ZERO_WIDTHS
-            .binary_search_by(|&(lo, hi)| {
-                let lo = u32::from_le_bytes([lo[0], lo[1], lo[2], 0]);
-                let hi = u32::from_le_bytes([hi[0], hi[1], hi[2], 0]);
-                if cp < lo {
-                    Ordering::Greater
-                } else if cp > hi {
-                    Ordering::Less
-                } else {
-                    Ordering::Equal
-                }
-            })
-            .is_err()
-    }
-}
-
-/// Whether this character is a default-ignorable combining mark
+        """/// Whether this character is a default-ignorable combining mark
 /// or ZWJ. These characters won't interrupt non-Arabic ligatures.
-fn is_ligature_transparent(c: char) -> bool {
+pub fn is_ligature_transparent(c: char) -> bool {
     matches!(c, """
     )
 
@@ -1704,28 +1657,6 @@ fn is_ligature_transparent(c: char) -> bool {
         """)
 }
 
-/// Whether this character is transparent wrt the effect of
-/// U+0338 COMBINING LONG SOLIDUS OVERLAY
-/// on its base character.
-#[cfg(feature = "cjk")]
-fn is_solidus_transparent(c: char) -> bool {
-    let cp: u32 = c.into();
-    is_ligature_transparent(c)
-        || SOLIDUS_TRANSPARENT
-            .binary_search_by(|&(lo, hi)| {
-                let lo = u32::from_le_bytes([lo[0], lo[1], lo[2], 0]);
-                let hi = u32::from_le_bytes([hi[0], hi[1], hi[2], 0]);
-                if cp < lo {
-                    Ordering::Greater
-                } else if cp > hi {
-                    Ordering::Less
-                } else {
-                    Ordering::Equal
-                }
-            })
-            .is_ok()
-}
-
 /// Whether this character forms an [emoji presentation sequence]
 /// (https://www.unicode.org/reports/tr51/#def_emoji_presentation_sequence)
 /// when followed by `'\\u{FEOF}'`.
@@ -1739,6 +1670,7 @@ pub fn starts_emoji_presentation_seq(c: char) -> bool {
 """
     )
 
+    emoji_presentation_idx, _ = emoji_presentation_table
     for msbs, i in emoji_presentation_idx:
         module.write(f"        0x{msbs:X} => {i},\n")
 
@@ -1766,6 +1698,7 @@ pub fn starts_non_ideographic_text_presentation_seq(c: char) -> bool {
 """
     )
 
+    text_presentation_idx, _ = text_presentation_table
     for msbs, i in text_presentation_idx:
         module.write(f"        0x{msbs:X} => &TEXT_PRESENTATION_LEAF_{i},\n")
 
@@ -1796,6 +1729,7 @@ pub fn is_emoji_modifier_base(c: char) -> bool {
 """
     )
 
+    emoji_modifier_idx, _ = emoji_modifier_table
     for msbs, i in emoji_modifier_idx:
         module.write(f"        0x{msbs:X} => &EMOJI_MODIFIER_LEAF_{i},\n")
 
@@ -1815,15 +1749,54 @@ pub fn is_emoji_modifier_base(c: char) -> bool {
     })
     .is_ok()
 }
+"""
+    )
 
+
+def emit_tables(
+    module: IO[str],
+    unicode_version: tuple[int, int, int],
+    tables: list[Table],
+    special_ranges: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
+    special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
+    emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
+    text_presentation_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
+    emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
+    joining_group_lam: list[tuple[Codepoint, Codepoint]],
+    non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
+    ligature_transparent: list[tuple[Codepoint, Codepoint]],
+    solidus_transparent: list[tuple[Codepoint, Codepoint]],
+):
+    """Outputs a Rust module to `module` using table data from `tables`.
+    If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
+    """
+    module.write(
+        f"""use crate::props::*;
+use crate::width_info::WidthInfo;
+
+/// The version of [Unicode](http://www.unicode.org/)
+/// that this version of unicode-width is based on.
+pub const UNICODE_VERSION: (u8, u8, u8) = {unicode_version};
+"""
+    )
+
+    module.write(lookup_fns(False, special_ranges, joining_group_lam))
+    module.write(lookup_fns(True, special_ranges_cjk, joining_group_lam))
+
+    emoji_presentation_idx, emoji_presentation_leaves = emoji_presentation_table
+    text_presentation_idx, text_presentation_leaves = text_presentation_table
+    emoji_modifier_idx, emoji_modifier_leaves = emoji_modifier_table
+
+    module.write(
+        """
 #[repr(align(32))]
-struct Align32<T>(T);
+pub(crate) struct Align32<T>(pub(crate) T);
 
 #[repr(align(64))]
-struct Align64<T>(T);
+pub(crate) struct Align64<T>(pub(crate) T);
 
 #[repr(align(128))]
-struct Align128<T>(T);
+pub(crate) struct Align128<T>(pub(crate) T);
 """
     )
 
@@ -1890,7 +1863,7 @@ static {table.name}: Align{table.align}<[[u8; {table.bytes_per_row}]; {table.nam
 /// Sorted list of codepoint ranges (inclusive)
 /// that are zero-width but not `Joining_Type=Transparent`
 /// FIXME: can we get better compression?
-static NON_TRANSPARENT_ZERO_WIDTHS: [([u8; 3], [u8; 3]); {len(non_transparent_zero_widths)}] = [
+pub(crate) static NON_TRANSPARENT_ZERO_WIDTHS: [([u8; 3], [u8; 3]); {len(non_transparent_zero_widths)}] = [
 """
     )
 
@@ -1909,7 +1882,7 @@ static NON_TRANSPARENT_ZERO_WIDTHS: [([u8; 3], [u8; 3]); {len(non_transparent_ze
 /// (mostly ccc > 1).
 /// FIXME: can we get better compression?
 #[cfg(feature = "cjk")]
-static SOLIDUS_TRANSPARENT: [([u8; 3], [u8; 3]); {len(solidus_transparent)}] = [
+pub(crate) static SOLIDUS_TRANSPARENT: [([u8; 3], [u8; 3]); {len(solidus_transparent)}] = [
 """
     )
 
@@ -1925,7 +1898,7 @@ static SOLIDUS_TRANSPARENT: [([u8; 3], [u8; 3]); {len(solidus_transparent)}] = [
 
 /// Array of 1024-bit bitmaps. Index into the correct bitmap with the 10 LSB of your codepoint
 /// to get whether it can start an emoji presentation sequence.
-static EMOJI_PRESENTATION_LEAVES: Align128<[[u8; 128]; {len(emoji_presentation_leaves)}]> = Align128([
+pub(crate) static EMOJI_PRESENTATION_LEAVES: Align128<[[u8; 128]; {len(emoji_presentation_leaves)}]> = Align128([
 """
     )
     for leaf in emoji_presentation_leaves:
@@ -1945,7 +1918,7 @@ static EMOJI_PRESENTATION_LEAVES: Align128<[[u8; 128]; {len(emoji_presentation_l
         module.write(
             f"""
 #[rustfmt::skip]
-static TEXT_PRESENTATION_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
+pub(crate) static TEXT_PRESENTATION_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
 """
         )
         for lo, hi in leaf:
@@ -1958,7 +1931,7 @@ static TEXT_PRESENTATION_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
         module.write(
             f"""
 #[rustfmt::skip]
-static EMOJI_MODIFIER_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
+pub(crate) static EMOJI_MODIFIER_LEAF_{leaf_idx}: [(u8, u8); {len(leaf)}] = [
 """
         )
         for lo, hi in leaf:
@@ -2114,6 +2087,18 @@ def main(module_path: str):
         ),
     )
     print(f'Wrote to "{module_path}"')
+
+    emit_rust_file(
+        PROPS_PATH,
+        lambda f: emit_props(
+            f,
+            ligature_transparent,
+            emoji_presentation_table,
+            text_presentation_table,
+            emoji_modifier_table,
+        ),
+    )
+    print(f'Wrote to "{PROPS_PATH}"')
 
     emit_rust_file(WIDTH_INFO_PATH, emit_width_info)
     print(f'Wrote to "{WIDTH_INFO_PATH}"')
