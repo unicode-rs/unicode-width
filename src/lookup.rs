@@ -12,3 +12,30 @@
 mod gen;
 
 pub use gen::*;
+
+use crate::width_info::WidthInfo;
+
+#[inline]
+pub fn str_width<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {
+    s.rfold(
+        (0, WidthInfo::DEFAULT),
+        |(sum, next_info), c| -> (usize, WidthInfo) {
+            let (add, info) = width_in_str(c, next_info);
+            (sum.wrapping_add_signed(isize::from(add)), info)
+        },
+    )
+    .0
+}
+
+#[cfg(feature = "cjk")]
+#[inline]
+pub fn str_width_cjk<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {
+    s.rfold(
+        (0, WidthInfo::DEFAULT),
+        |(sum, next_info), c| -> (usize, WidthInfo) {
+            let (add, info) = width_in_str_cjk(c, next_info);
+            (sum.wrapping_add_signed(isize::from(add)), info)
+        },
+    )
+    .0
+}

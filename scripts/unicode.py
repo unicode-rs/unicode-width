@@ -1589,18 +1589,6 @@ pub(crate) fn width_in_str{cjk_lo}(c: char, mut next_info: WidthInfo) -> (i8, Wi
         (ret.0 as i8, ret.1)
     }}
 }}
-
-{cfg}#[inline]
-pub fn str_width{cjk_lo}<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {{
-    s.rfold(
-        (0, WidthInfo::DEFAULT),
-        |(sum, next_info), c| -> (usize, WidthInfo) {{
-            let (add, info) = width_in_str{cjk_lo}(c, next_info);
-            (sum.wrapping_add_signed(isize::from(add)), info)
-        }},
-    )
-    .0
-}}
 """
 
     return s
