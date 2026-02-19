@@ -180,6 +180,7 @@ pub use tables::UNICODE_VERSION;
 
 mod lookup;
 mod props;
+#[path = "gen/tables.rs"]
 mod tables;
 mod width_info;
 

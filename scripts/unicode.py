@@ -65,7 +65,7 @@ class OffsetType(enum.IntEnum):
     """Each offset is a single byte (u8)."""
 
 
-MODULE_PATH = "../src/tables.rs"
+MODULE_PATH = "../src/gen/tables.rs"
 """The path of the emitted Rust module (relative to the working directory)"""
 
 PROPS_PATH = "../src/gen/props.rs"
