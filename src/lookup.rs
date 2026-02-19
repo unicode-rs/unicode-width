@@ -155,6 +155,7 @@ pub(crate) fn width_in_generic<const IS_CJK: bool>(
             }
 
             match (next_info, c) {
+                #[cfg(feature = "cjk")]
                 (WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY, _)
                     if IS_CJK && is_solidus_transparent(c) =>
                 {

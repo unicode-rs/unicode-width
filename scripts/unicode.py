@@ -1307,8 +1307,6 @@ impl WidthInfo {
 
     for variant in WidthState:
         if variant.is_carried():
-            if variant.is_cjk_only():
-                module.write('    #[cfg(feature = "cjk")]\n')
             module.write(
                 f"    pub(crate) const {variant.name}: Self = Self(0b{variant.value:016b});\n"
             )

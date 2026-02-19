@@ -42,9 +42,7 @@ impl WidthInfo {
     pub(crate) const VARIATION_SELECTOR_15: Self = Self(0b0100000000000000);
     pub(crate) const VARIATION_SELECTOR_16: Self = Self(0b1000000000000000);
     pub(crate) const JOINING_GROUP_ALEF: Self = Self(0b0011000011111111);
-    #[cfg(feature = "cjk")]
     pub(crate) const COMBINING_LONG_SOLIDUS_OVERLAY: Self = Self(0b0011110011111111);
-    #[cfg(feature = "cjk")]
     pub(crate) const SOLIDUS_OVERLAY_ALEF: Self = Self(0b0011100011111111);
     pub(crate) const HEBREW_LETTER_LAMED: Self = Self(0b0011100000000000);
     pub(crate) const ZWJ_HEBREW_LETTER_LAMED: Self = Self(0b0011110000000000);
