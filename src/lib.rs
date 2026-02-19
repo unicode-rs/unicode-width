@@ -180,6 +180,9 @@ pub use tables::UNICODE_VERSION;
 
 mod tables;
 
+#[cfg(test)]
+mod test;
+
 mod private {
     pub trait Sealed {}
     #[cfg(not(feature = "cjk"))]
