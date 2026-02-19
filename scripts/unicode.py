@@ -68,6 +68,9 @@ class OffsetType(enum.IntEnum):
 MODULE_PATH = "../src/tables.rs"
 """The path of the emitted Rust module (relative to the working directory)"""
 
+WIDTH_INFO_PATH = "../src/width_info.rs"
+"""The path of the emitted WidthInfo struct (relative to the working directory)"""
+
 TEST_PATH = "../src/tables_test.rs"
 """The path of the emitted Rust tests (relative to the working directory)"""
 
@@ -1598,27 +1601,10 @@ pub fn str_width{cjk_lo}<S: DoubleEndedIterator<Item = char>>(s: S) -> usize {{
     return s
 
 
-def emit_tables(
-    module: IO[str],
-    unicode_version: tuple[int, int, int],
-    tables: list[Table],
-    special_ranges: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
-    special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
-    emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
-    text_presentation_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
-    emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
-    joining_group_lam: list[tuple[Codepoint, Codepoint]],
-    non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
-    ligature_transparent: list[tuple[Codepoint, Codepoint]],
-    solidus_transparent: list[tuple[Codepoint, Codepoint]],
-):
-    """Outputs a Rust module to `module` using table data from `tables`.
-    If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
-    """
+def emit_width_info(module: IO[str]):
+    """Outputs the WidthInfo struct and its associated constants and methods."""
     module.write(
-        """use core::cmp::Ordering;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+        """#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) struct WidthInfo(u16);
 
 const LIGATURE_TRANSPARENT_MASK: u16 = 0b0010_0000_0000_0000;
@@ -1638,101 +1624,125 @@ impl WidthInfo {
             )
 
     module.write(
-        f"""
+        """
     /// Whether this width mode is ligature_transparent
     /// (has 5th MSB set.)
-    fn is_ligature_transparent(self) -> bool {{
+    pub(crate) fn is_ligature_transparent(self) -> bool {
         (self.0 & 0b0000_1000_0000_0000) == 0b0000_1000_0000_0000
-    }}
+    }
 
     /// Sets 6th MSB.
-    fn set_zwj_bit(self) -> Self {{
+    pub(crate) fn set_zwj_bit(self) -> Self {
         Self(self.0 | 0b0000_0100_0000_0000)
-    }}
+    }
 
     /// Has top bit set
-    fn is_emoji_presentation(self) -> bool {{
+    pub(crate) fn is_emoji_presentation(self) -> bool {
         (self.0 & WidthInfo::VARIATION_SELECTOR_16.0) == WidthInfo::VARIATION_SELECTOR_16.0
-    }}
+    }
 
-    fn is_zwj_emoji_presentation(self) -> bool {{
+    pub(crate) fn is_zwj_emoji_presentation(self) -> bool {
         (self.0 & 0b1011_0000_0000_0000) == 0b1001_0000_0000_0000
-    }}
+    }
 
     /// Set top bit
-    fn set_emoji_presentation(self) -> Self {{
+    pub(crate) fn set_emoji_presentation(self) -> Self {
         if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK
             || (self.0 & 0b1001_0000_0000_0000) == 0b0001_0000_0000_0000
-        {{
+        {
             Self(
                 self.0
                     | WidthInfo::VARIATION_SELECTOR_16.0
                         & !WidthInfo::VARIATION_SELECTOR_15.0
                         & !WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0,
             )
-        }} else {{
+        } else {
             Self::VARIATION_SELECTOR_16
-        }}
-    }}
+        }
+    }
 
     /// Clear top bit
-    fn unset_emoji_presentation(self) -> Self {{
-        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {{
+    pub(crate) fn unset_emoji_presentation(self) -> Self {
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {
             Self(self.0 & !WidthInfo::VARIATION_SELECTOR_16.0)
-        }} else {{
+        } else {
             Self::DEFAULT
-        }}
-    }}
+        }
+    }
 
     /// Has 2nd bit set
-    fn is_text_presentation(self) -> bool {{
+    pub(crate) fn is_text_presentation(self) -> bool {
         (self.0 & WidthInfo::VARIATION_SELECTOR_15.0) == WidthInfo::VARIATION_SELECTOR_15.0
-    }}
+    }
 
     /// Set 2nd bit
-    fn set_text_presentation(self) -> Self {{
-        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {{
+    pub(crate) fn set_text_presentation(self) -> Self {
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {
             Self(
                 self.0
                     | WidthInfo::VARIATION_SELECTOR_15.0
                         & !WidthInfo::VARIATION_SELECTOR_16.0
                         & !WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0,
             )
-        }} else {{
+        } else {
             Self(WidthInfo::VARIATION_SELECTOR_15.0)
-        }}
-    }}
+        }
+    }
 
     /// Clear 2nd bit
-    fn unset_text_presentation(self) -> Self {{
+    pub(crate) fn unset_text_presentation(self) -> Self {
         Self(self.0 & !WidthInfo::VARIATION_SELECTOR_15.0)
-    }}
+    }
 
     /// Has 7th bit set
-    fn is_vs1_2_3(self) -> bool {{
+    pub(crate) fn is_vs1_2_3(self) -> bool {
         (self.0 & WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0)
             == WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0
-    }}
+    }
 
     /// Set 7th bit
-    fn set_vs1_2_3(self) -> Self {{
-        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {{
+    pub(crate) fn set_vs1_2_3(self) -> Self {
+        if (self.0 & LIGATURE_TRANSPARENT_MASK) == LIGATURE_TRANSPARENT_MASK {
             Self(
                 self.0
                     | WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0
                         & !WidthInfo::VARIATION_SELECTOR_15.0
                         & !WidthInfo::VARIATION_SELECTOR_16.0,
             )
-        }} else {{
+        } else {
             Self(WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0)
-        }}
-    }}
+        }
+    }
 
     /// Clear 7th bit
-    fn unset_vs1_2_3(self) -> Self {{
+    pub(crate) fn unset_vs1_2_3(self) -> Self {
         Self(self.0 & !WidthInfo::VARIATION_SELECTOR_1_2_OR_3.0)
-    }}
-}}
+    }
+}
+"""
+    )
+
+
+def emit_tables(
+    module: IO[str],
+    unicode_version: tuple[int, int, int],
+    tables: list[Table],
+    special_ranges: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
+    special_ranges_cjk: list[tuple[tuple[Codepoint, Codepoint], WidthState]],
+    emoji_presentation_table: tuple[list[tuple[int, int]], list[list[int]]],
+    text_presentation_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
+    emoji_modifier_table: tuple[list[tuple[int, int]], list[list[tuple[int, int]]]],
+    joining_group_lam: list[tuple[Codepoint, Codepoint]],
+    non_transparent_zero_widths: list[tuple[Codepoint, Codepoint]],
+    ligature_transparent: list[tuple[Codepoint, Codepoint]],
+    solidus_transparent: list[tuple[Codepoint, Codepoint]],
+):
+    """Outputs a Rust module to `module` using table data from `tables`.
+    If `TABLE_CFGS` is edited, you may need to edit the included code for `lookup_width`.
+    """
+    module.write(
+        f"""use crate::width_info::WidthInfo;
+use core::cmp::Ordering;
 
 /// The version of [Unicode](http://www.unicode.org/)
 /// that this version of unicode-width is based on.
@@ -2074,7 +2084,7 @@ def emit_tests(
                 test_width_variants_cjk.append(variant)
 
     module.write(
-        f"""use crate::tables::WidthInfo;
+        f"""use crate::width_info::WidthInfo;
 
 pub(crate) static NORMALIZATION_TEST_WIDTHS: [WidthInfo; {len(test_width_variants) + 1}] = [
     WidthInfo::DEFAULT,
@@ -2204,6 +2214,9 @@ def main(module_path: str):
         ),
     )
     print(f'Wrote to "{module_path}"')
+
+    emit_rust_file(WIDTH_INFO_PATH, emit_width_info)
+    print(f'Wrote to "{WIDTH_INFO_PATH}"')
 
     emit_rust_file(TEST_PATH, lambda f: emit_tests(f, normalization_tests))
     print(f'Wrote to "{TEST_PATH}"')

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use crate::tables::*;
+use crate::width_info::WidthInfo;
 
 #[path = "tables_test.rs"]
 mod tables_test;

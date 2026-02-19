@@ -179,6 +179,7 @@
 pub use tables::UNICODE_VERSION;
 
 mod tables;
+mod width_info;
 
 #[cfg(test)]
 mod test;
