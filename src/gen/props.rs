@@ -13,7 +13,6 @@ use crate::tables::*;
 use core::cmp::Ordering;
 
 /// Whether this character has Joining_Group=Lam.
-#[rustfmt::skip]
 pub fn is_joining_group_lam(c: char) -> bool {
     matches!(
         c,
@@ -23,7 +22,6 @@ pub fn is_joining_group_lam(c: char) -> bool {
 
 /// Whether this character is a default-ignorable combining mark
 /// or ZWJ. These characters won't interrupt non-Arabic ligatures.
-#[rustfmt::skip]
 pub fn is_ligature_transparent(c: char) -> bool {
     matches!(
         c,
