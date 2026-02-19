@@ -71,7 +71,7 @@ MODULE_PATH = "../src/tables.rs"
 WIDTH_INFO_PATH = "../src/gen/width_info.rs"
 """The path of the emitted WidthInfo constants (relative to the working directory)"""
 
-TEST_PATH = "../src/tables_test.rs"
+TEST_PATH = "../src/gen/tables_test.rs"
 """The path of the emitted Rust tests (relative to the working directory)"""
 
 TABLE_SPLITS = [7, 13]
