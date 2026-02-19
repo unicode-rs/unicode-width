@@ -11,25 +11,21 @@
 #[path = "gen/lookup.rs"]
 mod gen;
 
-pub use gen::*;
+pub(crate) use gen::lookup_width;
+
+#[cfg(feature = "cjk")]
+pub(crate) use gen::lookup_width_cjk;
 
 use crate::props::*;
 use crate::width_info::WidthInfo;
 
 #[inline]
 fn lookup_width_generic<const IS_CJK: bool>(c: char) -> (u8, WidthInfo) {
+    #[cfg(feature = "cjk")]
     if IS_CJK {
-        #[cfg(feature = "cjk")]
-        {
-            lookup_width_cjk(c)
-        }
-        #[cfg(not(feature = "cjk"))]
-        {
-            lookup_width(c)
-        }
-    } else {
-        lookup_width(c)
+        return lookup_width_cjk(c);
     }
+    lookup_width(c)
 }
 
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or
@@ -101,14 +97,13 @@ pub(crate) fn width_in_generic<const IS_CJK: bool>(
         }
     }
 
-    if IS_CJK {
-        if (matches!(
+    if IS_CJK
+        && (matches!(
             next_info,
             WidthInfo::COMBINING_LONG_SOLIDUS_OVERLAY | WidthInfo::SOLIDUS_OVERLAY_ALEF
         ) && matches!(c, '<' | '=' | '>'))
-        {
-            return (2, WidthInfo::DEFAULT);
-        }
+    {
+        return (2, WidthInfo::DEFAULT);
     }
 
     if c <= '\u{A0}' {
