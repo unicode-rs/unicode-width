@@ -38,6 +38,11 @@ fn test_emoji() {
     assert_width!("👩‍🔬", 2, 2); // Woman scientist
 }
 
+#[test]
+fn test_halfwidth_katakana() {
+    assert_width!("ﾊﾟｸﾞ", 4, 4); // Halfwidth Katakana letters Pa, Gu (pug dog)
+}
+
 // From README
 #[test]
 fn test_bad_devanagari() {
@@ -63,6 +68,8 @@ fn test_char2() {
     assert_width!('\u{1160}', Some(0), Some(0));
     assert_width!('\u{a1}', Some(1), Some(2));
     assert_width!('\u{300}', Some(0), Some(0));
+    assert_width!('\u{FF9E}', Some(1), Some(1));
+    assert_width!('\u{FF9F}', Some(1), Some(1));
 }
 
 #[test]

@@ -98,7 +98,8 @@
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!         with the [`Default_Ignorable_Code_Point`] property.
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
-//!         with the [`Grapheme_Extend`] property.
+//!         with the [`Grapheme_Extend`] property, except [`'\u{FF9E}'` HALFWIDTH KATAKANA VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9E)
+//!         and [`'\u{FF9F}'` HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9F).
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!         with a [`Hangul_Syllable_Type`] of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
 //!       - The following [`Prepended_Concatenation_Mark`]s:

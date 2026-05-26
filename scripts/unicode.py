@@ -545,6 +545,12 @@ def load_zero_widths() -> list[bool]:
         lambda cp: operator.setitem(zw_map, cp, True),
     )
 
+    # HALFWIDTH KATAKANA VOICED SOUND MARK and HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK
+    # are `Lm` letters even though they currently carry `Grapheme_Extend`.
+    # They occupy their own cell in terminal-style width calculations.
+    zw_map[0xFF9E] = False
+    zw_map[0xFF9F] = False
+
     # Treat `Hangul_Syllable_Type`s of `Vowel_Jamo` and `Trailing_Jamo`
     # as zero-width. This matches the behavior of glibc `wcwidth`.
     #
