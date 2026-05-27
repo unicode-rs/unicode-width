@@ -90,7 +90,8 @@
 //!      - Has [`Canonical_Combining_Class`] greater than 1, or
 //!      - Is a [default-ignorable][`Default_Ignorable_Code_Point`] [combining mark][combining marks].
 //! 2. In all other cases, the width of the string equals the sum of its character widths:
-//!    1. [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER] has width 1 (outside of the ligatures described previously).
+//!    1. [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER], [`'\u{FF9E}'` HALFWIDTH KATAKANA VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9E),
+//!       and [`'\u{FF9F}'` HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9F) have width 1 (outside of the ligatures described previously).
 //!    2. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) and
 //!       [`'\u{17A4}'` KHMER INDEPENDENT VOWEL QAA](https://util.unicode.org/UnicodeJsps/character.jsp?a=17A4) have width 2.
 //!    3. [`'\u{17D8}'` KHMER SIGN BEYYAL](https://util.unicode.org/UnicodeJsps/character.jsp?a=17D8) has width 3.
@@ -98,8 +99,7 @@
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BDefault_Ignorable_Code_Point%7D)
 //!         with the [`Default_Ignorable_Code_Point`] property.
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Extend%7D)
-//!         with the [`Grapheme_Extend`] property, except [`'\u{FF9E}'` HALFWIDTH KATAKANA VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9E)
-//!         and [`'\u{FF9F}'` HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9F).
+//!         with the [`Grapheme_Extend`] property.
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BHangul_Syllable_Type%3DV%7D%5Cp%7BHangul_Syllable_Type%3DT%7D)
 //!         with a [`Hangul_Syllable_Type`] of `Vowel_Jamo` (`V`) or `Trailing_Jamo` (`T`).
 //!       - The following [`Prepended_Concatenation_Mark`]s:
