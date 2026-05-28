@@ -90,8 +90,9 @@
 //!      - Has [`Canonical_Combining_Class`] greater than 1, or
 //!      - Is a [default-ignorable][`Default_Ignorable_Code_Point`] [combining mark][combining marks].
 //! 2. In all other cases, the width of the string equals the sum of its character widths:
-//!    1. [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER], [`'\u{FF9E}'` HALFWIDTH KATAKANA VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9E),
-//!       and [`'\u{FF9F}'` HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9F) have width 1 (outside of the ligatures described previously).
+//!    1. [`'\u{2D7F}'` TIFINAGH CONSONANT JOINER] (outside of the ligatures described previously),
+//!       [`'\u{FF9E}'` HALFWIDTH KATAKANA VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9E),
+//!       and [`'\u{FF9F}'` HALFWIDTH KATAKANA SEMI-VOICED SOUND MARK](https://util.unicode.org/UnicodeJsps/character.jsp?a=FF9F) have width 1.
 //!    2. [`'\u{115F}'` HANGUL CHOSEONG FILLER](https://util.unicode.org/UnicodeJsps/character.jsp?a=115F) and
 //!       [`'\u{17A4}'` KHMER INDEPENDENT VOWEL QAA](https://util.unicode.org/UnicodeJsps/character.jsp?a=17A4) have width 2.
 //!    3. [`'\u{17D8}'` KHMER SIGN BEYYAL](https://util.unicode.org/UnicodeJsps/character.jsp?a=17D8) has width 3.
