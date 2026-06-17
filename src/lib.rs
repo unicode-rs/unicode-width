@@ -70,7 +70,7 @@
 //!        ligatures, the insertion of any number of [`'\u{200D}'` ZERO WIDTH JOINER](https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-23/#G23126)s
 //!        will not affect the width.
 //!      - **[Arabic]**: A character sequence consisting of one character with [`Joining_Group`]`=Lam`,
-//!        followed by any number of characters with [`Joining_Type`]`=Transparent`, followed by one character
+//!        followed by any number of zero-width characters with [`Joining_Type`]`=Transparent`, followed by one character
 //!        with [`Joining_Group`]`=Alef`, has total width 1. For example: `لا`‎, `لآ`‎, `ڸا`‎, `لٟٞأ`
 //!      - **[Buginese]**: `"\u{1A15}\u{1A17}\u{200D}\u{1A10}"` (<a, -i> ya, `ᨕᨗ‍ᨐ`) has total width 1.
 //!      - **[Hebrew]**: `"א\u{200D}ל"` (Alef-Lamed, `א‍ל`) has total width 1.
