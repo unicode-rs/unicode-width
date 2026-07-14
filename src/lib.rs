@@ -63,7 +63,7 @@
 //!        - Has the [`Emoji_Presentation`] property, and
 //!        - Is not in the [Enclosed Ideographic Supplement] block.
 //!    - [`'\u{2018}'`, `'\u{2019}'`, `'\u{201C}'`, and `'\u{201D}'`][General Punctuation] always have width 1
-//!      when followed by '\u{FE00}' or '\u{FE02}', and width 2 when followed by '\u{FE01}'.
+//!      when followed by `'\u{FE00}'` or `'\u{FE02}'`, and width 2 when followed by `'\u{FE01}'`.
 //!    - Script-specific ligatures:
 //!      - For all the following ligatures, the insertion of any number of [default-ignorable][`Default_Ignorable_Code_Point`]
 //!        [combining marks] anywhere in the sequence will not change the total width. In addition, for all non-Arabic
@@ -110,7 +110,7 @@
 //!         - [`'\u{0891}'` PIASTRE MARK ABOVE](https://util.unicode.org/UnicodeJsps/character.jsp?a=0891), and
 //!         - [`'\u{08E2}'` DISPUTED END OF AYAH](https://util.unicode.org/UnicodeJsps/character.jsp?a=08E2).
 //!       - [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BGrapheme_Cluster_Break%3DPrepend%7D-%5Cp%7BPrepended_Concatenation_Mark%7D)
-//!         with the [`Grapheme_Extend=Prepend`] property, that are not also [`Prepended_Concatenation_Mark`]s.
+//!         with the [`Grapheme_Cluster_Break=Prepend`] property, that are not also [`Prepended_Concatenation_Mark`]s.
 //!       - [`'\u{A8FA}'` DEVANAGARI CARET](https://util.unicode.org/UnicodeJsps/character.jsp?a=A8FA).
 //!    5. [Characters](https://util.unicode.org/UnicodeJsps/list-unicodeset.jsp?a=%5Cp%7BEast_Asian_Width%3DF%7D%5Cp%7BEast_Asian_Width%3DW%7D)
 //!       with an [`East_Asian_Width`] of [`Fullwidth`] or [`Wide`] have width 2.
@@ -131,7 +131,7 @@
 //! [`East_Asian_Width`]: https://www.unicode.org/reports/tr11/#ED1
 //! [`Emoji_Presentation`]: https://unicode.org/reports/tr51/#def_emoji_presentation
 //! [`General_Category`]: https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-4/#G124142
-//! [`Grapheme_Extend=Prepend`]: https://www.unicode.org/reports/tr29/#Prepend
+//! [`Grapheme_Cluster_Break=Prepend`]: https://www.unicode.org/reports/tr29/#Prepend
 //! [`Grapheme_Extend`]: https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G52443
 //! [`Hangul_Syllable_Type`]: https://www.unicode.org/versions/Unicode16.0.0/core-spec/chapter-3/#G45593
 //! [`Joining_Group`]: https://www.unicode.org/versions/Unicode14.0.0/ch09.pdf#G36862
