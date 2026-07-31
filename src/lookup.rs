@@ -21,11 +21,34 @@ use crate::width_info::WidthInfo;
 
 #[inline]
 fn lookup_width_generic<const IS_CJK: bool>(c: char) -> (u8, WidthInfo) {
+    #[cfg(feature = "terminal")]
+    if let Some(w) = terminal_width(c) {
+        return (w, WidthInfo::DEFAULT);
+    }
     #[cfg(feature = "cjk")]
     if IS_CJK {
         return lookup_width_cjk(c);
     }
     lookup_width(c)
+}
+
+/// Enclosed Alphanumerics (U+2460-U+24FF), Dingbat Circled Digits
+/// (U+2776-U+2793), and Circled Numbers on Black Square (U+3248-U+324F)
+/// have East Asian Width "Ambiguous", but terminal emulators render them
+/// as 2 columns in both CJK and non-CJK contexts. With the `terminal`
+/// feature enabled, report 2 so TUI consumers (e.g. ratatui) place them
+/// in two cells, matching the painted glyph.
+#[cfg(feature = "terminal")]
+#[inline]
+fn terminal_width(c: char) -> Option<u8> {
+    if matches!(
+        c,
+        '\u{2460}'..='\u{24FF}' | '\u{2776}'..='\u{2793}' | '\u{3248}'..='\u{324F}'
+    ) {
+        Some(2)
+    } else {
+        None
+    }
 }
 
 /// Returns the [UAX #11](https://www.unicode.org/reports/tr11/) based width of `c`, or

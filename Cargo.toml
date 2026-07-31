@@ -43,6 +43,12 @@ core = { version = "1.0", package = "rustc-std-workspace-core", optional = true 
 [features]
 cjk = []
 default = ["cjk"]
+# Terminal-emulator semantics: treat Enclosed Alphanumerics, Dingbat circled
+# digits, and circled numbers on black square as 2 columns even outside CJK
+# contexts. Most terminal emulators render these at double width regardless
+# of locale, so TUI consumers (e.g. ratatui) should opt in to match the
+# painted glyphs.
+terminal = []
 rustc-dep-of-std = ['std', 'core']
 
 # Legacy, now a no-op

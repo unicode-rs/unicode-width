@@ -599,9 +599,22 @@ fn emoji_test_file() {
 
 #[test]
 fn ambiguous_line_break() {
-    assert_width!("\u{24EA}", 1, 2);
-    assert_width!("\u{2616}", 1, 2);
-    assert_width!("\u{2780}", 1, 2);
+    #[cfg(not(feature = "terminal"))]
+    {
+        assert_width!("\u{24EA}", 1, 2);
+        assert_width!("\u{2616}", 1, 2);
+        assert_width!("\u{2780}", 1, 2);
+    }
+    // With the `terminal` feature, Enclosed Alphanumerics and Dingbat
+    // circled digits are 2 columns even in non-CJK contexts, matching
+    // what terminal emulators paint. Other ambiguous characters (e.g.
+    // WHITE SHOGI PIECE U+2616) are unaffected.
+    #[cfg(feature = "terminal")]
+    {
+        assert_width!("\u{24EA}", 2, 2);
+        assert_width!("\u{2616}", 1, 2);
+        assert_width!("\u{2780}", 2, 2);
+    }
 }
 
 #[test]
