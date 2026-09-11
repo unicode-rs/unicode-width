@@ -657,6 +657,20 @@ fn test_vs1_vs2_vs3() {
 }
 
 #[test]
+fn test_kirat_rai() {
+    // Per the crate docs, inserting default-ignorable combining marks or ZWJ
+    // anywhere in a script ligature must not change its width.
+    assert_width!("\u{16D68}", 1, 1);
+    assert_width!("\u{16D63}\u{16D67}", 1, 1);
+    assert_width!("\u{16D63}\u{200D}\u{16D67}", 1, 1);
+    assert_width!("\u{16D63}\u{034F}\u{16D67}", 1, 1);
+    assert_width!("\u{16D63}\u{16D68}", 1, 1);
+    assert_width!("\u{16D63}\u{200D}\u{16D68}", 1, 1);
+    assert_width!("\u{16D69}\u{16D67}", 1, 1);
+    assert_width!("\u{16D69}\u{200D}\u{16D67}", 1, 1);
+}
+
+#[test]
 fn test_char_iter() {
     assert_eq!(char_iter_width(['a', 'b', '🔬'].into_iter()), 4)
 }

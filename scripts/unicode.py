@@ -307,9 +307,9 @@ class WidthState(enum.IntEnum):
     "(\\uE0061..=\\uE007A){6} \\uE007F \\u200D `Emoji_Presentation`"
 
     # Kirat Rai
-    KIRAT_RAI_VOWEL_SIGN_E = 0b0000_0000_0010_0000
+    KIRAT_RAI_VOWEL_SIGN_E = 0b0011_1100_0010_0000
     "\\u16D67 (\\u16D67 \\u16D67)+ and canonical equivalents"
-    KIRAT_RAI_VOWEL_SIGN_AI = 0b0000_0000_0010_0001
+    KIRAT_RAI_VOWEL_SIGN_AI = 0b0011_1100_0010_0001
     "(\\u16D68)+ and canonical equivalents"
 
     # VARIATION SELECTORS

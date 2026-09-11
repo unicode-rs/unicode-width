@@ -36,8 +36,8 @@ impl WidthInfo {
     pub(crate) const TAG_A4_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011100);
     pub(crate) const TAG_A5_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011101);
     pub(crate) const TAG_A6_END_ZWJ_EMOJI_PRESENTATION: Self = Self(0b0000000000011110);
-    pub(crate) const KIRAT_RAI_VOWEL_SIGN_E: Self = Self(0b0000000000100000);
-    pub(crate) const KIRAT_RAI_VOWEL_SIGN_AI: Self = Self(0b0000000000100001);
+    pub(crate) const KIRAT_RAI_VOWEL_SIGN_E: Self = Self(0b0011110000100000);
+    pub(crate) const KIRAT_RAI_VOWEL_SIGN_AI: Self = Self(0b0011110000100001);
     pub(crate) const VARIATION_SELECTOR_1_2_OR_3: Self = Self(0b0000001000000000);
     pub(crate) const VARIATION_SELECTOR_15: Self = Self(0b0100000000000000);
     pub(crate) const VARIATION_SELECTOR_16: Self = Self(0b1000000000000000);
