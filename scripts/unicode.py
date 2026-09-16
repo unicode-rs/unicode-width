@@ -43,7 +43,7 @@ from collections import defaultdict
 from itertools import batched
 from typing import Callable, Iterable, IO
 
-UNICODE_VERSION = "17.0.0"
+UNICODE_VERSION = "18.0.0"
 """The version of the Unicode data files to download."""
 
 NUM_CODEPOINTS = 0x110000
@@ -138,7 +138,7 @@ def fetch_open(filename: str, local_prefix: str = "", emoji: bool = False):
 def load_unicode_version() -> tuple[int, int, int]:
     """Returns the current Unicode version by fetching and processing `ReadMe.txt`."""
     with fetch_open("ReadMe.txt") as readme:
-        pattern = r"for Version (\d+)\.(\d+)\.(\d+) of the Unicode"
+        pattern = r"for version (\d+)\.(\d+)\.(\d+) of the\nUnicode"
         return tuple(map(int, re.search(pattern, readme.read()).groups()))  # type: ignore
 
 
