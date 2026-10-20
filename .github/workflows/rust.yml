@@ -32,6 +32,10 @@ jobs:
       run: cargo build --verbose --no-default-features
     - name: Run tests (no default features)
       run: cargo test --verbose --no-default-features
+    - name: Run tests (ASCII fast path)
+      run: |
+        cargo test --verbose --features ascii-fast-path
+        cargo test --verbose --no-default-features --features ascii-fast-path
     - name: Check clippy (no default features)
       run: cargo clippy --verbose --lib --tests --no-default-features
 
@@ -56,4 +60,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.66.0
-      - run: cargo check --lib --features core,std
+      - run: cargo check --lib --features core,std,ascii-fast-path

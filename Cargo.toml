@@ -39,6 +39,7 @@ core = { version = "1.0", package = "rustc-std-workspace-core", optional = true 
 
 [features]
 cjk = []
+ascii-fast-path = []
 default = ["cjk"]
 rustc-dep-of-std = ['std', 'core']
 

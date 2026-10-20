@@ -18,6 +18,23 @@ use test::Bencher;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[bench]
+fn ascii(b: &mut Bencher) {
+    let string = "The quick brown fox jumps over the lazy dog. ".repeat(128);
+    b.iter(|| test::black_box(UnicodeWidthStr::width(test::black_box(string.as_str()))));
+}
+
+#[bench]
+fn short_unicode(b: &mut Bencher) {
+    b.iter(|| test::black_box(UnicodeWidthStr::width(test::black_box("漢"))));
+}
+
+#[bench]
+fn mixed_unicode(b: &mut Bencher) {
+    let string = "a".repeat(61) + "é";
+    b.iter(|| test::black_box(UnicodeWidthStr::width(test::black_box(string.as_str()))));
+}
+
+#[bench]
 fn unicode(b: &mut Bencher) {
     let string = "Unicode width: élève 日本語 한글 العربية 👩‍🔬\r\n".repeat(128);
     b.iter(|| test::black_box(UnicodeWidthStr::width(test::black_box(string.as_str()))));

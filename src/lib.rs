@@ -26,8 +26,7 @@
 //!
 //! # `"cjk"` feature flag
 //!
-//! This crate has one Cargo feature flag, `"cjk"`
-//! (enabled by default).
+//! The `"cjk"` Cargo feature is enabled by default.
 //! It enables `UnicodeWidthChar::width_cjk`
 //! and `UnicodeWidthStr::width_cjk`,
 //! which perform an alternate width calculation
@@ -46,6 +45,14 @@
 //! #[cfg(feature = "cjk")]
 //! assert_eq!(teststr.width_cjk(), 6);
 //! ```
+//!
+//! # `"ascii-fast-path"` feature flag
+//!
+//! The `ascii-fast-path` feature is disabled by default. It accelerates ASCII
+//! strings without carriage returns, but can slow Unicode strings. Widths stay
+//! the same. Enable it for workloads dominated by ASCII. Cargo unifies features
+//! across dependencies, so another dependency can enable this path for all callers.
+//! The iterator functions `char_iter_width` and `char_iter_width_cjk` bypass the shortcut.
 //!
 //! # Unicode support and terminal policies
 //!
@@ -306,12 +313,20 @@ pub trait UnicodeWidthStr: private::Sealed {
 impl UnicodeWidthStr for str {
     #[inline]
     fn width(&self) -> usize {
+        #[cfg(feature = "ascii-fast-path")]
+        if self.is_ascii() && !self.as_bytes().contains(&b'\r') {
+            return self.len();
+        }
         lookup::str_width(self.chars())
     }
 
     #[cfg(feature = "cjk")]
     #[inline]
     fn width_cjk(&self) -> usize {
+        #[cfg(feature = "ascii-fast-path")]
+        if self.is_ascii() && !self.as_bytes().contains(&b'\r') {
+            return self.len();
+        }
         lookup::str_width_cjk(self.chars())
     }
 }

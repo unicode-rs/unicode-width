@@ -32,6 +32,21 @@ fn test_str() {
 }
 
 #[test]
+fn test_ascii_strings() {
+    let mut bytes = [b'a'; 64];
+    for a in 0..128 {
+        for b in 0..128 {
+            bytes[62] = a;
+            bytes[63] = b;
+            let s = std::str::from_utf8(&bytes).unwrap();
+            let expected = 2 - usize::from([a, b] == *b"\r\n");
+            assert_width!(&s[62..], expected, expected);
+            assert_width!(s, 62 + expected, 62 + expected);
+        }
+    }
+}
+
+#[test]
 fn test_emoji() {
     assert_width!("👩", 2, 2); // Woman
     assert_width!("🔬", 2, 2); // Microscope
