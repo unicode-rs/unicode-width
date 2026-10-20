@@ -16,23 +16,21 @@ mod tables_test;
 
 use tables_test::*;
 
-fn str_width_test(s: &str, init: WidthInfo) -> isize {
+fn str_width_test(s: &str, init: WidthInfo) -> (isize, WidthInfo) {
     s.chars()
         .rfold((0, init), |(sum, next_info), c| -> (isize, WidthInfo) {
             let (add, info) = width_in_str(c, next_info);
             (sum.checked_add(isize::from(add)).unwrap(), info)
         })
-        .0
 }
 
 #[cfg(feature = "cjk")]
-fn str_width_test_cjk(s: &str, init: WidthInfo) -> isize {
+fn str_width_test_cjk(s: &str, init: WidthInfo) -> (isize, WidthInfo) {
     s.chars()
         .rfold((0, init), |(sum, next_info), c| -> (isize, WidthInfo) {
             let (add, info) = width_in_str_cjk(c, next_info);
             (sum.checked_add(isize::from(add)).unwrap(), info)
         })
-        .0
 }
 
 #[test]

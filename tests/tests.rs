@@ -180,6 +180,7 @@ fn test_solidus_overlay() {
     assert_width!("\u{06B8}\u{FE0F}\u{338}\u{0627}", 1, 1);
 
     assert_width!("=\u{338}\u{0627}", 2, 3);
+    assert_width!("=\u{1011B}\u{338}", 2, 2);
 }
 
 #[test]
@@ -273,6 +274,8 @@ fn test_lisu_tones() {
 
 #[test]
 fn test_hebrew_alef_lamed() {
+    assert_width!("\u{05D0}\u{200D}\u{FB3C}", 1, 1);
+    assert_width!("\u{05D0}\u{200D}\u{05DC}\u{05BC}", 1, 1);
     assert_width!("\u{05D0}", 1, 1);
     assert_width!("\u{05DC}", 1, 1);
     assert_width!("\u{05D0}\u{05DC}", 2, 2);

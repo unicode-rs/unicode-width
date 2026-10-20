@@ -40,7 +40,7 @@ import re
 import sys
 import urllib.request
 from collections import defaultdict
-from itertools import batched
+from itertools import batched, chain
 from typing import Callable, Iterable, IO
 
 UNICODE_VERSION = "18.0.0"
@@ -118,7 +118,10 @@ def fetch_open(filename: str, local_prefix: str = "", emoji: bool = False):
     fetches it from `https://www.unicode.org/Public/`. Exits with code 1 on failure.
     """
     basename = os.path.basename(filename)
-    localname = os.path.join(local_prefix, basename)
+    # UnicodeData.txt has no version header, so cache UCD files by version.
+    localname = os.path.join(
+        local_prefix, basename if emoji else f"{UNICODE_VERSION}-{basename}"
+    )
     if not os.path.exists(localname):
         if emoji:
             prefix = "emoji"
@@ -129,10 +132,23 @@ def fetch_open(filename: str, local_prefix: str = "", emoji: bool = False):
             localname,
         )
     try:
-        return open(localname, encoding="utf-8")
+        data = open(localname, encoding="utf-8")
     except OSError:
         sys.stderr.write(f"cannot load {localname}")
         sys.exit(1)
+    if basename != "UnicodeData.txt":
+        version = re.search(
+            r"(?:-\b|Version:\s*|for version )(\d+\.\d+(?:\.\d+)?)",
+            data.read(1024),
+        )
+        found = version.group(1) if version else "unknown"
+        if found.count(".") == 1:
+            found += ".0"
+        if found != UNICODE_VERSION:
+            data.close()
+            raise ValueError(f"{localname}: expected Unicode {UNICODE_VERSION}, found {found}")
+        data.seek(0)
+    return data
 
 
 def load_unicode_version() -> tuple[int, int, int]:
@@ -144,19 +160,15 @@ def load_unicode_version() -> tuple[int, int, int]:
 
 def load_property(filename: str, pattern: str, action: Callable[[int], None]):
     with fetch_open(filename) as properties:
-        single = re.compile(rf"^([0-9A-F]+)\s*;\s*{pattern}\s+")
-        multiple = re.compile(rf"^([0-9A-F]+)\.\.([0-9A-F]+)\s*;\s*{pattern}\s+")
+        record = re.compile(
+            rf"^\s*([0-9A-F]+)(?:\.\.([0-9A-F]+))?\s*;\s*(?:{pattern})(?=\s|#|$)"
+        )
 
-        for line in properties.readlines():
-            raw_data = None  # (low, high)
-            if match := single.match(line):
-                raw_data = (match.group(1), match.group(1))
-            elif match := multiple.match(line):
-                raw_data = (match.group(1), match.group(2))
-            else:
+        for line in properties:
+            if not (match := record.match(line)):
                 continue
-            low = int(raw_data[0], 16)
-            high = int(raw_data[1], 16)
+            low = int(match.group(1), 16)
+            high = int(match.group(2) or match.group(1), 16)
             for cp in range(low, high + 1):
                 action(cp)
 
@@ -344,7 +356,7 @@ class WidthState(enum.IntEnum):
     # Hebrew alef lamed
 
     HEBREW_LETTER_LAMED = 0b0011_1000_0000_0000
-    "\\u05DC (Alef-ZWJ-Lamed ligature)"
+    "\\u05DC or \\uFB3C (Alef-ZWJ-Lamed ligature)"
 
     ZWJ_HEBREW_LETTER_LAMED = 0b0011_1100_0000_0000
     "\\u200D\\u05DC (Alef-ZWJ-Lamed ligature)"
@@ -450,10 +462,6 @@ def load_east_asian_widths() -> list[EastAsianWidth]:
     `Ambiguous` characters are assigned `EffectiveWidth.AMBIGUOUS`."""
 
     with fetch_open("EastAsianWidth.txt") as eaw:
-        # matches a width assignment for a single codepoint, i.e. "1F336;N  # ..."
-        single = re.compile(r"^([0-9A-F]+)\s*;\s*(\w+) +# (\w+)")
-        # matches a width assignment for a range of codepoints, i.e. "3001..3003;W  # ..."
-        multiple = re.compile(r"^([0-9A-F]+)\.\.([0-9A-F]+)\s*;\s*(\w+) +# (\w+)")
         # map between width category code and condensed width
         width_codes = {
             **{c: EastAsianWidth.NARROW for c in ["N", "Na", "H"]},
@@ -461,30 +469,26 @@ def load_east_asian_widths() -> list[EastAsianWidth]:
             "A": EastAsianWidth.AMBIGUOUS,
         }
 
-        width_map = []
-        current = 0
-        for line in eaw.readlines():
-            raw_data = None  # (low, high, width)
-            if match := single.match(line):
-                raw_data = (match.group(1), match.group(1), match.group(2))
-            elif match := multiple.match(line):
-                raw_data = (match.group(1), match.group(2), match.group(3))
-            else:
+        defaults = []
+        ranges = []
+        for line in eaw:
+            is_default = line.startswith("# @missing:")
+            fields = line.removeprefix("# @missing:") if is_default else line
+            fields = fields.partition("#")[0].strip()
+            if not fields:
                 continue
-            low = int(raw_data[0], 16)
-            high = int(raw_data[1], 16)
-            width = width_codes[raw_data[2]]
+            codepoints, value = fields.split(";")
+            low, _, high = codepoints.strip().partition("..")
+            low, high = int(low, 16), int(high or low, 16)
+            assert 0 <= low <= high < NUM_CODEPOINTS
+            width = width_codes[value.strip()]
+            if is_default and not defaults and low == 0 and high == NUM_CODEPOINTS - 1 and value.strip() == "N":
+                continue
+            (defaults if is_default else ranges).append((low, high, width))
 
-            assert current <= high
-            while current <= high:
-                # Some codepoints don't fall into any of the ranges in EastAsianWidth.txt.
-                # All such codepoints are implicitly given Neural width (resolves to narrow)
-                width_map.append(EastAsianWidth.NARROW if current < low else width)
-                current += 1
-
-        while len(width_map) < NUM_CODEPOINTS:
-            # Catch any leftover codepoints and assign them implicit Neutral/narrow width.
-            width_map.append(EastAsianWidth.NARROW)
+        width_map = [EastAsianWidth.NARROW] * NUM_CODEPOINTS
+        for low, high, width in chain(defaults, ranges):
+            width_map[low : high + 1] = [width] * (high - low + 1)
 
     # Characters with ambiguous line breaking are ambiguous
     load_property(
@@ -509,11 +513,12 @@ def load_east_asian_widths() -> list[EastAsianWidth]:
 
     # Canonical equivalence for symbols with stroke
     with fetch_open("UnicodeData.txt") as udata:
-        single = re.compile(r"([0-9A-Z]+);.*?;.*?;.*?;.*?;([0-9A-Z]+) 0338;")
-        for line in udata.readlines():
-            if match := single.match(line):
-                composed = int(match.group(1), 16)
-                decomposed = int(match.group(2), 16)
+        for line in udata:
+            fields = line.split(";", 6)
+            decomposition = fields[5].split()
+            if len(decomposition) == 2 and decomposition[1] == "0338":
+                composed = int(fields[0], 16)
+                decomposed = int(decomposition[0], 16)
                 if width_map[decomposed] == EastAsianWidth.AMBIGUOUS:
                     width_map[composed] = EastAsianWidth.AMBIGUOUS
 
@@ -670,7 +675,7 @@ def load_width_maps() -> tuple[list[WidthState], list[WidthState]]:
 
     for cps, width in [
         ([0x0A], WidthState.LINE_FEED),
-        ([0x05DC], WidthState.HEBREW_LETTER_LAMED),
+        ([0x05DC, 0xFB3C], WidthState.HEBREW_LETTER_LAMED),
         (alef_joining, WidthState.JOINING_GROUP_ALEF),
         (range(0x1780, 0x1783), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
         (range(0x1784, 0x1788), WidthState.KHMER_COENG_ELIGIBLE_LETTER),
@@ -792,13 +797,12 @@ def load_solidus_transparent(
     # Recursive decompositions
     while True:
         with fetch_open("UnicodeData.txt") as udata:
-            single = re.compile(r"([0-9A-Z]+);.*?;.*?;.*?;.*?;([0-9A-F ]+);")
-            for line in udata.readlines():
-                if match := single.match(line):
-                    composed = int(match.group(1), 16)
-                    decomposed = [int(c, 16) for c in match.group(2).split(" ")]
-                    if all([c in ccc_above_1 for c in decomposed]):
-                        ccc_above_1.add(composed)
+            for line in udata:
+                fields = line.split(";", 6)
+                decomposition = fields[5].split()
+                if decomposition and not decomposition[0].startswith("<"):
+                    if all(int(c, 16) in ccc_above_1 for c in decomposition):
+                        ccc_above_1.add(int(fields[0], 16))
         if len(ccc_above_1) == num_chars:
             break
         else:
