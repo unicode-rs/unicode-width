@@ -1260,7 +1260,7 @@ def lookup_fns(
 /// nothing to worry about if you re-run `unicode.py` (for example, when updating Unicode.)
 /// However, if you change the *actual structure* of the lookup tables (perhaps by editing the
 /// `make_tables` function in `unicode.py`) you must ensure that this code reflects those changes.
-{cfg}#[inline]
+{cfg}#[inline(always)]
 pub(crate) fn lookup_width{cjk_lo}(c: char) -> (u8, WidthInfo) {{
     let cp = c as usize;
 

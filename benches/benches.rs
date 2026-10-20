@@ -18,6 +18,23 @@ use test::Bencher;
 use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 #[bench]
+fn unicode(b: &mut Bencher) {
+    let string = "Unicode width: élève 日本語 한글 العربية 👩‍🔬\r\n".repeat(128);
+    b.iter(|| test::black_box(UnicodeWidthStr::width(test::black_box(string.as_str()))));
+}
+
+#[bench]
+fn unicode_scanner(b: &mut Bencher) {
+    let string = "élève Καλημέρα Привет 漢字カタカナ ".repeat(128);
+    b.iter(|| unicode_width::char_iter_width(test::black_box(string.as_str()).chars()));
+}
+
+#[bench]
+fn short_unicode_scanner(b: &mut Bencher) {
+    b.iter(|| unicode_width::char_iter_width(test::black_box("helloé").chars()));
+}
+
+#[bench]
 fn cargo(b: &mut Bencher) {
     let string = iter::repeat('a').take(4096).collect::<String>();
 

@@ -20,7 +20,7 @@ use crate::width_info::WidthInfo;
 /// nothing to worry about if you re-run `unicode.py` (for example, when updating Unicode.)
 /// However, if you change the *actual structure* of the lookup tables (perhaps by editing the
 /// `make_tables` function in `unicode.py`) you must ensure that this code reflects those changes.
-#[inline]
+#[inline(always)]
 pub(crate) fn lookup_width(c: char) -> (u8, WidthInfo) {
     let cp = c as usize;
 
@@ -74,7 +74,7 @@ pub(crate) fn lookup_width(c: char) -> (u8, WidthInfo) {
 /// However, if you change the *actual structure* of the lookup tables (perhaps by editing the
 /// `make_tables` function in `unicode.py`) you must ensure that this code reflects those changes.
 #[cfg(feature = "cjk")]
-#[inline]
+#[inline(always)]
 pub(crate) fn lookup_width_cjk(c: char) -> (u8, WidthInfo) {
     let cp = c as usize;
 
