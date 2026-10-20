@@ -23,7 +23,7 @@ jobs:
     - name: Run tests
       run: cargo test --verbose
     - name: Build docs
-      run: cargo doc
+      run: cargo doc && cargo doc --no-default-features
     - name: Check formatting
       run: cargo fmt --check
     - name: Check clippy

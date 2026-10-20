@@ -92,7 +92,7 @@ fn simple_width_match(c: char) -> Option<usize> {
 fn enwik8(b: &mut Bencher) {
     // To benchmark, download & unzip `enwik8` from https://data.deepai.org/enwik8.zip
     let data_path = "bench_data/enwik8";
-    let string = std::fs::read_to_string(data_path).unwrap_or_default();
+    let string = std::fs::read_to_string(data_path).expect("Download and unpack enwik8 first.");
     b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
 }
 
@@ -101,7 +101,8 @@ fn jawiki(b: &mut Bencher) {
     // To benchmark, download & extract `jawiki-20220501-pages-articles-multistream-index.txt` from
     // https://dumps.wikimedia.org/jawiki/20220501/jawiki-20220501-pages-articles-multistream-index.txt.bz2
     let data_path = "bench_data/jawiki-20220501-pages-articles-multistream-index.txt";
-    let string = std::fs::read_to_string(data_path).unwrap_or_default();
+    let string =
+        std::fs::read_to_string(data_path).expect("Download and extract the jawiki index first.");
     b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
 }
 
@@ -109,6 +110,6 @@ fn jawiki(b: &mut Bencher) {
 fn emoji(b: &mut Bencher) {
     // To benchmark, download emoji-style.txt from https://www.unicode.org/emoji/charts/emoji-style.txt
     let data_path = "bench_data/emoji-style.txt";
-    let string = std::fs::read_to_string(data_path).unwrap_or_default();
+    let string = std::fs::read_to_string(data_path).expect("Download emoji-style.txt first.");
     b.iter(|| test::black_box(UnicodeWidthStr::width(string.as_str())));
 }

@@ -4,8 +4,8 @@
 [![crates.io version](https://img.shields.io/crates/v/unicode-width)](https://crates.io/crates/unicode-width)
 [![Docs status](https://img.shields.io/docsrs/unicode-width)](https://docs.rs/unicode-width/)
 
-Determine displayed width of `char` and `str` types according to [Unicode Standard Annex #11][UAX11]
-and other portions of the Unicode standard.
+Determine terminal-column widths of `char` and `str` types using Unicode properties
+and the terminal rendering policies described below.
 
 This crate is `#![no_std]`.
 
@@ -23,6 +23,13 @@ fn main() {
     println!("The above string is {} columns wide (CJK).", width);
 }
 ```
+
+## Unicode support and terminal policies
+
+The crate uses Unicode 18.0 data, including [UAX #11][UAX11] (East Asian Width),
+with terminal rendering policies. The [API documentation](https://docs.rs/unicode-width/latest/unicode_width/)
+lists the supported Unicode rules, variation-selector and emoji fallbacks, and
+the limits of terminal-width estimates.
 
 **NOTE:** The computed width values may not match the actual rendered column
 width. For example, many Brahmic scripts like Devanagari have complex rendering rules

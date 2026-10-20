@@ -34,6 +34,38 @@ fn str_width_test_cjk(s: &str, init: WidthInfo) -> (isize, WidthInfo) {
 }
 
 #[test]
+fn test_variation_selector_fallback() {
+    for (s, narrow, _cjk) in [
+        ("\u{FE0F}#", 1, 1),
+        ("\r\u{FE0F}#", 2, 2),
+        ("#\u{0301}\u{FE0F}", 1, 1),
+        ("#\u{FE00}\u{FE0F}", 1, 1),
+        ("#\u{FE0F}\u{FE0F}", 2, 2),
+        ("\u{2018}\u{0301}\u{FE01}", 1, 2),
+        ("\u{180B}\u{180F}\u{E0100}\u{E01EF}", 0, 0),
+    ] {
+        assert_eq!(str_width(s.chars()), narrow, "{s:?}");
+        #[cfg(feature = "cjk")]
+        assert_eq!(str_width_cjk(s.chars()), _cjk, "{s:?}");
+    }
+}
+
+#[test]
+fn test_emoji_qualification_policy() {
+    for (s, narrow, _cjk) in [
+        ("\u{1F469}\u{200D}\u{2696}", 3, 3),
+        ("\u{2764}\u{200D}\u{1F525}", 3, 3),
+        ("\u{1F469}\u{FE0E}\u{200D}\u{1F680}", 4, 4),
+        ("\u{2648}\u{FE0E}\u{200D}\u{1F680}", 3, 4),
+        ("\u{1F469}\u{200D}\u{2696}\u{FE0E}", 3, 3),
+    ] {
+        assert_eq!(str_width(s.chars()), narrow, "{s:?}");
+        #[cfg(feature = "cjk")]
+        assert_eq!(str_width_cjk(s.chars()), _cjk, "{s:?}");
+    }
+}
+
+#[test]
 fn test_normalization() {
     for &(orig, nfc, nfd, nfkc, nfkd) in &NORMALIZATION_TEST {
         for init in NORMALIZATION_TEST_WIDTHS {

@@ -589,13 +589,12 @@ fn emoji_test_file() {
         let (cps, status) = line.split_once(';').unwrap();
         let status = status.trim();
         if status.starts_with("fully-qualified") || status.starts_with("component") {
-            let emoji: String = cps
-                .trim()
-                .split(' ')
-                .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap())
-                .collect();
-            dbg!(&emoji);
-            assert_width!(emoji, 2, 2);
+            let emoji = cps
+                .split_whitespace()
+                .map(|s| char::try_from(u32::from_str_radix(s, 16).unwrap()).unwrap());
+            assert_eq!(char_iter_width(emoji.clone()), 2, "{cps}");
+            #[cfg(feature = "cjk")]
+            assert_eq!(unicode_width::char_iter_width_cjk(emoji), 2, "{cps}");
         }
     }
 }
@@ -612,6 +611,7 @@ fn test_vs1_vs2_vs3() {
     assert_width!('\u{FE00}', Some(0), Some(0));
     assert_width!('\u{FE01}', Some(0), Some(0));
     assert_width!('\u{FE02}', Some(0), Some(0));
+    let mut sequence = String::with_capacity(7);
     for c in '\0'..=char::MAX {
         if matches!(c, '\u{2018}' | '\u{2019}' | '\u{201C}' | '\u{201D}') {
             assert_width!(c, Some(1), Some(2));
@@ -622,39 +622,12 @@ fn test_vs1_vs2_vs3() {
             assert_width!(format!("{c}\u{FE02}"), 1, 1);
             assert_width!(format!("{c}\u{FE02}\u{FE01}"), 1, 1);
         } else {
-            assert_eq!(
-                format!("{c}\u{FE00}").width(),
-                c.width().unwrap_or(1),
-                "{c:?}"
-            );
-            #[cfg(feature = "cjk")]
-            assert_eq!(
-                format!("{c}\u{FE00}").width_cjk(),
-                c.width_cjk().unwrap_or(1),
-                "{c:?}"
-            );
-            assert_eq!(
-                format!("{c}\u{FE01}").width(),
-                c.width().unwrap_or(1),
-                "{c:?}"
-            );
-            #[cfg(feature = "cjk")]
-            assert_eq!(
-                format!("{c}\u{FE01}").width_cjk(),
-                c.width_cjk().unwrap_or(1),
-                "{c:?}"
-            );
-            assert_eq!(
-                format!("{c}\u{FE02}").width(),
-                c.width().unwrap_or(1),
-                "{c:?}"
-            );
-            #[cfg(feature = "cjk")]
-            assert_eq!(
-                format!("{c}\u{FE02}").width_cjk(),
-                c.width_cjk().unwrap_or(1),
-                "{c:?}"
-            );
+            for selector in ['\u{FE00}', '\u{FE01}', '\u{FE02}'] {
+                sequence.clear();
+                sequence.push(c);
+                sequence.push(selector);
+                assert_width!(sequence, c.width().unwrap_or(1), c.width_cjk().unwrap_or(1));
+            }
         }
     }
 }

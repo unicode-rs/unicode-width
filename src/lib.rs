@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Determine displayed width of `char` and `str` types according to
-//! [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-//! and other portions of the Unicode standard.
+//! Determine terminal-column widths of `char` and `str` types using Unicode
+//! properties and the terminal rendering policies described below.
 //! See the [Rules for determining width](#rules-for-determining-width) section
 //! for the exact rules.
 //!
@@ -29,8 +28,8 @@
 //!
 //! This crate has one Cargo feature flag, `"cjk"`
 //! (enabled by default).
-//! It enables the [`UnicodeWidthChar::width_cjk`]
-//! and [`UnicodeWidthStr::width_cjk`],
+//! It enables `UnicodeWidthChar::width_cjk`
+//! and `UnicodeWidthStr::width_cjk`,
 //! which perform an alternate width calculation
 //! more suited to CJK contexts. The flag also unseals the
 //! [`UnicodeWidthChar`] and [`UnicodeWidthStr`] traits.
@@ -47,6 +46,56 @@
 //! #[cfg(feature = "cjk")]
 //! assert_eq!(teststr.width_cjk(), 6);
 //! ```
+//!
+//! # Unicode support and terminal policies
+//!
+//! [`UNICODE_VERSION`] identifies the Unicode data release. The width rules combine
+//! [UAX #11] (East Asian Width), [UAX #44] (Unicode Character Database), [UTS #51]
+//! (Unicode Emoji), and the core standard's combining, joining, and variation rules.
+//! The crate also uses selected properties from [UAX #29] (Text Segmentation) and
+//! [UAX #14] (Line Breaking).
+//!
+//! Canonically equivalent strings have equal widths, following [UAX #15] (Normalization).
+//! Compatibility normalization can change width: for example, `"Ａ"` has width 2 and
+//! its NFKC form `"A"` has width 1. Width calculation does not normalize the input.
+//!
+//! The crate does not implement full grapheme segmentation, line breaking,
+//! bidirectional ordering, vertical layout, or font shaping.
+//!
+//! These widths are estimates for horizontal terminal cells. The `char` methods return
+//! `None` for control characters. String methods count each control as width 1, except
+//! that `"\r\n"` has width 1 in total. To match layouts with tabs, line breaks, or terminal
+//! escape sequences, callers must apply those protocols before measuring the text.
+//!
+//! [UAX #11]: https://www.unicode.org/reports/tr11/
+//! [UAX #14]: https://www.unicode.org/reports/tr14/
+//! [UAX #15]: https://www.unicode.org/reports/tr15/
+//! [UAX #29]: https://www.unicode.org/reports/tr29/
+//! [UAX #44]: https://www.unicode.org/reports/tr44/
+//! [UTS #51]: https://www.unicode.org/reports/tr51/
+//!
+//! Variation selectors have width 0, including unsupported sequences and misplaced selectors.
+//! Only the assigned sequences listed below change the width of a preceding character.
+//! A selector separated from that character by another selector, mark, or control cannot
+//! select a different presentation for it.
+//!
+//! Unicode 18 recommends a visible display for [misplaced variation selectors]. This crate
+//! does not choose a replacement glyph. Callers that display a replacement must measure that text.
+//!
+//! [misplaced variation selectors]: https://www.unicode.org/versions/Unicode18.0.0/core-spec/chapter-3/#G52452
+//!
+//! Fully-qualified emoji in the [RGI set] (recommended for general interchange) and the
+//! emoji components in `emoji-test.txt` have width 2 in both width modes.
+//! The crate does not insert omitted emoji presentation selectors. Minimally-qualified
+//! and unqualified forms follow the rules below and can have different widths.
+//! For example, `"*\u{20E3}"` has width 1 and `"*\u{FE0F}\u{20E3}"` has width 2.
+//!
+//! Recognition uses sequence structure and character properties, rather than an exact RGI
+//! list or font support. Recognized non-RGI ZWJ sequences also have width 2.
+//! A text presentation selector (`'\u{FE0E}'`) interrupts an emoji ZWJ sequence in both modes,
+//! even when it does not narrow its base character in CJK mode.
+//!
+//! [RGI set]: https://www.unicode.org/reports/tr51/#def_rgi_set
 //!
 //! # Rules for determining width
 //!
@@ -204,7 +253,7 @@ pub trait UnicodeWidthChar: private::Sealed {
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character.
     ///
-    /// This function treats characters in the Ambiguous category according
+    /// This function generally treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 1 column wide. This is consistent with the recommendations for non-CJK
     /// contexts, or when the context cannot be reliably determined.
@@ -213,7 +262,7 @@ pub trait UnicodeWidthChar: private::Sealed {
     /// Returns the character's displayed width in columns, or `None` if the
     /// character is a control character.
     ///
-    /// This function treats characters in the Ambiguous category according
+    /// This function generally treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 2 columns wide. This is consistent with the recommendations for
     /// CJK contexts.
@@ -238,7 +287,7 @@ impl UnicodeWidthChar for char {
 pub trait UnicodeWidthStr: private::Sealed {
     /// Returns the string's displayed width in columns.
     ///
-    /// This function treats characters in the Ambiguous category according
+    /// This function generally treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// as 1 column wide. This is consistent with the recommendations for
     /// non-CJK contexts, or when the context cannot be reliably determined.
@@ -246,9 +295,9 @@ pub trait UnicodeWidthStr: private::Sealed {
 
     /// Returns the string's displayed width in columns.
     ///
-    /// This function treats characters in the Ambiguous category according
+    /// This function generally treats characters in the Ambiguous category according
     /// to [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
-    /// as 2 column wide. This is consistent with the recommendations for
+    /// as 2 columns wide. This is consistent with the recommendations for
     /// CJK contexts.
     #[cfg(feature = "cjk")]
     fn width_cjk(&self) -> usize;
